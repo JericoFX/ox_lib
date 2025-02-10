@@ -11,12 +11,37 @@ function cache:set(key, value)
 	end
 end
 
+
+
 local GetVehiclePedIsIn = GetVehiclePedIsIn
 local GetPedInVehicleSeat = GetPedInVehicleSeat
 local GetVehicleMaxNumberOfPassengers = GetVehicleMaxNumberOfPassengers
 local GetMount = GetMount
 local IsPedOnMount = IsPedOnMount
 local GetCurrentPedWeapon = GetCurrentPedWeapon
+
+RegisterNetEvent('QBCore:Client:OnJobUpdate', function(job)
+	cache:set("Job", job)
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+	local QBCore = exports["qb-core"]:GetCoreObject()
+	local Player = QBCore.Functions.GetPlayerData()
+	cache:set("Player", Player)
+	cache:set("Job", Player.job)
+	Wait(100)
+	QBCore = nil
+	Player = nil
+end)
+
+RegisterNetEvent('QBCore:Client:SetPlayerData', function(val)
+	cache:set("Player", val)
+end)
+
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+	cache:set("Player", nil)
+	cache:set("Job", nil)
+end)
 
 CreateThread(function()
 	while true do
