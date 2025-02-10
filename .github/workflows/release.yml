@@ -2,8 +2,9 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   create-release:
@@ -23,30 +24,25 @@ jobs:
         with:
           version: 8.6.1
 
-      - name: Setup node
-        uses: actions/setup-node@v2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 16.x
-          cache: 'pnpm'
+          bun-version: latest
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install --frozen-lockfile
         working-directory: web
 
       - name: Install package dependencies
-        run: pnpm install
-        working-directory: package
-
-      - name: Bump package version
-        run: pnpm version ${{ github.ref_name }}
+        run: bun install
         working-directory: package
 
       - name: Run build
-        run: pnpm build
+        run: bun run build
         working-directory: web
         env:
           CI: false
@@ -67,8 +63,6 @@ jobs:
 
       - name: Update tag ref
         uses: EndBug/latest-tag@latest
-        with:
-          tag-name: ${{ github.ref_name }}
 
       - name: Bundle files
         run: |
@@ -80,21 +74,13 @@ jobs:
           cd ./temp && zip -r ../ox_lib.zip ./ox_lib
 
       - name: Create Release
-        uses: 'marvinpinto/action-automatic-releases@v1.2.1'
-        id: auto_release
+        uses: 'marvinpinto/action-automatic-releases@latest'
         with:
           repo_token: '${{ secrets.GITHUB_TOKEN }}'
-          title: ${{ env.RELEASE_VERSION }}
+          automatic_release_tag: 'latest'
           prerelease: false
           files: ox_lib.zip
 
         env:
           CI: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish npm package
-        uses: JS-DevTools/npm-publish@v1
-        with:
-          token: ${{ secrets.NPM_TOKEN }}
-          package: './package/package.json'
-          access: 'public'
