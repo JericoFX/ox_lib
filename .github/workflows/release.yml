@@ -82,10 +82,13 @@ jobs:
             fi
           done
 
-          # Copiar la carpeta web con el build
-          if [ -d "web" ]; then
-            echo "Copying web directory with build"
-            cp -r web ./temp/ox_lib/
+          # Copiar solo la carpeta build del web (sin source ni node_modules)
+          if [ -d "web/build" ]; then
+            echo "Copying web build directory"
+            mkdir -p ./temp/ox_lib/web
+            cp -r web/build ./temp/ox_lib/web/
+          else
+            echo "Warning: web/build directory not found"
           fi
 
           # Crear el ZIP
