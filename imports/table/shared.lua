@@ -129,7 +129,36 @@ table.deepclone = table_deepclone
 table.merge = table_merge
 table.shuffle = shuffle
 
+---@param value any
+---@param cases table<any, function|any>
+---@return any
+---Implements a switch-case like functionality. Cases table maps values to functions or return values.
+---Use "default" key in cases table for default behavior. Returns nil if no match and no default.
+local function table_switch(value, cases)
+    local case = cases[value]
 
+    if case ~= nil then
+        if type(case) == 'function' then
+            return case(value)
+        else
+            return case
+        end
+    end
+
+    -- Try default case
+    local defaultCase = cases["default"]
+    if defaultCase ~= nil then
+        if type(defaultCase) == 'function' then
+            return defaultCase(value)
+        else
+            return defaultCase
+        end
+    end
+
+    return nil
+end
+
+table.switch = table_switch
 
 local frozenNewIndex = function(self) error(('cannot set values on a frozen table (%s)'):format(self), 2) end
 local _rawset = rawset
