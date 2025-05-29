@@ -5,7 +5,7 @@ on:
     paths:
       - fxmanifest.lua
     branches:
-      - main  # Cambia si tu rama principal tiene otro nombre
+      - main # Cambia si tu rama principal tiene otro nombre
 
 jobs:
   tag-and-release:
@@ -57,12 +57,12 @@ jobs:
           git tag "$TAG"
           git push origin "$TAG"
 
-      - name: Install project dependencies (if needed)
+      - name: Install project dependencies
         run: |
           cd web
           bun install --frozen-lockfile
-      
-      - name: Run build script
+
+      - name: Build web assets
         run: |
           cd web
           bun run build
@@ -70,11 +70,25 @@ jobs:
       - name: Create ZIP bundle
         run: |
           mkdir -p ./temp/ox_lib
-          cp ./{fxmanifest.lua,README.md,LICENSE,server.lua,client.lua,init.lua} ./temp/ox_lib 2>/dev/null || true
-          # Copia carpetas relevantes si existen
-          for dir in modules locales data; do
-            [ -d "$dir" ] && cp -r "$dir" ./temp/ox_lib
+
+          # Copiar archivos principales
+          cp ./{fxmanifest.lua,README.md,LICENSE,init.lua,NOTICE.md} ./temp/ox_lib 2>/dev/null || true
+
+          # Copiar todas las carpetas del proyecto
+          for dir in api imports locales resource wrappers; do
+            if [ -d "$dir" ]; then
+              echo "Copying directory: $dir"
+              cp -r "$dir" ./temp/ox_lib/
+            fi
           done
+
+          # Copiar la carpeta web con el build
+          if [ -d "web" ]; then
+            echo "Copying web directory with build"
+            cp -r web ./temp/ox_lib/
+          fi
+
+          # Crear el ZIP
           cd temp && zip -r ../ox_lib.zip ./ox_lib
 
       - name: Create GitHub Release
