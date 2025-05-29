@@ -80,19 +80,21 @@ function lib.task:driveToCoord(vehicle, coords, speed, driveStyle, stoppingRange
 end
 
 -- Entrar en vehículo
-function lib.task:enterVehicle(vehicle, seat, timeout) -- chequear si el vehiculo existe
+function lib.task:enterVehicle(vehicle, seat, timeout)
     if not self:isValidPed() then return false end
+    if not vehicle or not DoesEntityExist(vehicle) then return false end
 
-    seat = seat or -1
+    local seatIndex = self:_normalizeSeatIndex(seat)
     timeout = timeout or -1
 
-    TaskEnterVehicle(self.ped, vehicle, timeout, seat, 1.0, 1, 0)
+    TaskEnterVehicle(self.ped, vehicle, timeout, seatIndex, 1.0, 1, 0)
     return true
 end
 
 -- Salir del vehículo
-function lib.task:leaveVehicle(vehicle, flags) -- chequear si el vehiculo existe aca tambien
+function lib.task:leaveVehicle(vehicle, flags)
     if not self:isValidPed() then return false end
+    if not vehicle or not DoesEntityExist(vehicle) then return false end
 
     flags = flags or 0
 
@@ -101,7 +103,7 @@ function lib.task:leaveVehicle(vehicle, flags) -- chequear si el vehiculo existe
 end
 
 -- Usar objeto más cercano
-function lib.task:useNearestScenarioToCoord(coords, distance, duration) -- chequear si el objeto existe
+function lib.task:useNearestScenarioToCoord(coords, distance, duration)
     if not self:isValidPed() then return false end
 
     distance = distance or 3.0
@@ -185,6 +187,456 @@ function lib.task:getCurrentTaskType()
     if not self:isValidPed() then return nil end
 
     return GetCurrentPedTask(self.ped)
+end
+
+-- =====================================
+-- TAREAS DE VEHÍCULOS AVANZADAS
+-- =====================================
+
+-- Entrar al vehículo usando enum de asientos
+function lib.task:enterVehicleSeat(vehicle, seat, timeout, speed)
+    if not self:isValidPed() then return false end
+    if not vehicle or not DoesEntityExist(vehicle) then return false end
+
+    local seatIndex = self:_normalizeSeatIndex(seat)
+    if not seatIndex then return false end -- Asiento inválido
+
+    timeout = timeout or -1
+    speed = speed or 1.0
+
+    TaskEnterVehicle(self.ped, vehicle, timeout, seatIndex, speed, 1, 0)
+    return true
+end
+
+-- Cambiar de asiento dentro del vehículo
+function lib.task:shuffleToSeat(seat)
+    if not self:isValidPed() then return false end
+
+    local vehicle = GetVehiclePedIsIn(self.ped, false)
+    if not vehicle or vehicle == 0 then return false end
+
+    if not seat then
+        -- Sin seat específico, usar shuffle normal
+        TaskShuffleToNextVehicleSeat(self.ped, vehicle)
+        return true
+    end
+
+    local seatIndex = self:_normalizeSeatIndex(seat)
+    if not seatIndex then return false end -- Asiento inválido
+
+    -- Para ir a un asiento específico, usar TaskEnterVehicle desde dentro del vehículo
+    TaskEnterVehicle(self.ped, vehicle, -1, seatIndex, 1.0, 1, 0)
+    return true
+end
+
+-- Conducir vehículo en patrón de vagabundeo
+function lib.task:wander(driveStyle, cruiseSpeed)
+    if not self:isValidPed() then return false end
+
+    local vehicle = GetVehiclePedIsIn(self.ped, false)
+    if not vehicle or vehicle == 0 then return false end
+
+    driveStyle = driveStyle or 786603
+    cruiseSpeed = cruiseSpeed or 20.0
+
+    TaskVehicleDriveWander(self.ped, vehicle, cruiseSpeed, driveStyle)
+    return true
+end
+
+-- Escapar usando vehículo
+function lib.task:escapeInVehicle(coords, speed, driveStyle)
+    if not self:isValidPed() then return false end
+
+    local vehicle = GetVehiclePedIsIn(self.ped, false)
+    if not vehicle or vehicle == 0 then return false end
+
+    speed = speed or 50.0
+    driveStyle = driveStyle or 786471
+
+    TaskVehicleEscort(self.ped, vehicle, -1, -1, speed, driveStyle, 20.0)
+    return true
+end
+
+-- =====================================
+-- TAREAS CON OBJETOS Y PROPS
+-- =====================================
+
+-- Usar objeto específico
+function lib.task:useObject(objectModel, animDict, animName, duration)
+    if not self:isValidPed() then return false end
+
+    -- Buscar objeto cercano
+    local coords = GetEntityCoords(self.ped)
+    local objects = lib.getNearbyObjects(coords, 5.0)
+
+    for _, objectData in ipairs(objects) do
+        local model = GetEntityModel(objectData.object)
+        if model == joaat(objectModel) then
+            -- Cargar animación si se proporciona
+            if animDict and animName then
+                if lib.requestAnimDict(animDict) then
+                    TaskPlayAnim(self.ped, animDict, animName, 8.0, -8.0, duration or -1, 0, 0.0, false, false, false)
+                end
+            end
+            TaskStartScenarioAtPosition(self.ped, "WORLD_HUMAN_LEANING", coords.x, coords.y, coords.z, GetEntityHeading(self.ped), duration or -1, true, true)
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Crear y usar prop temporal
+function lib.task:useTemporaryProp(propModel, bone, offset, rotation, animDict, animName, duration)
+    if not self:isValidPed() then return false end
+
+    -- Crear prop
+    if lib.requestModel(propModel) then
+        local coords = GetEntityCoords(self.ped)
+        local prop = CreateObject(propModel, coords.x, coords.y, coords.z, true, true, true)
+
+        if prop and prop ~= 0 then
+            -- Adjuntar al ped
+            bone = bone or 60309 -- mano derecha por defecto
+            offset = offset or vector3(0.0, 0.0, 0.0)
+            rotation = rotation or vector3(0.0, 0.0, 0.0)
+
+            AttachEntityToEntity(prop, self.ped, GetPedBoneIndex(self.ped, bone),
+                offset.x, offset.y, offset.z,
+                rotation.x, rotation.y, rotation.z,
+                true, true, false, true, 1, true)
+
+            -- Reproducir animación si se proporciona
+            if animDict and animName then
+                if lib.requestAnimDict(animDict) then
+                    TaskPlayAnim(self.ped, animDict, animName, 8.0, -8.0, duration or -1, 50, 0.0, false, false, false)
+                end
+            end
+
+            -- Eliminar prop después de la duración
+            if duration and duration > 0 then
+                CreateThread(function()
+                    Wait(duration)
+                    if DoesEntityExist(prop) then
+                        DeleteEntity(prop)
+                    end
+                end)
+            end
+
+            return true, prop
+        end
+    end
+
+    return false
+end
+
+-- =====================================
+-- TAREAS DE COMBATE Y ARMAS AVANZADAS
+-- =====================================
+
+-- Equipar arma específica
+function lib.task:equipWeapon(weaponHash, ammo)
+    if not self:isValidPed() then return false end
+
+    -- Asegurar que el arma esté disponible
+    if lib.requestWeaponAsset(weaponHash) then
+        GiveWeaponToPed(self.ped, weaponHash, ammo or 250, false, true)
+        SetCurrentPedWeapon(self.ped, weaponHash, true)
+        return true
+    end
+
+    return false
+end
+
+-- Atacar entidad específica
+function lib.task:attackEntity(target, duration, attackType)
+    if not self:isValidPed() then return false end
+    if not target or not DoesEntityExist(target) then return false end
+
+    duration = duration or -1
+    attackType = attackType or 0 -- 0 = cualquier método
+
+    TaskCombatPed(self.ped, target, 0, 16)
+    return true
+end
+
+-- Cubrir detrás de objeto
+function lib.task:takeCoverAt()
+    if not self:isValidPed() then return false end
+    TaskStayInCover(self.ped)
+    return true
+end
+
+-- =====================================
+-- TAREAS SOCIALES Y DE INTERACCIÓN
+-- =====================================
+
+
+-- Saludar a jugador cercano
+function lib.task:greetNearestPlayer()
+    if not self:isValidPed() then return false end
+
+    local coords = GetEntityCoords(self.ped)
+    local playerId, playerPed = lib.getClosestPlayer(coords, 5.0, false)
+
+    if playerPed then
+        TaskTurnPedToFaceEntity(self.ped, playerPed, -1)
+        Wait(1000)
+        if lib.requestAnimDict("gestures@m@standing@casual") then
+            TaskPlayAnim(self.ped, "gestures@m@standing@casual", "gesture_hello", 8.0, -8.0, 2000, 0, 0.0, false, false, false)
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Huir del jugador más cercano
+function lib.task:fleeFromNearestPlayer(distance, duration)
+    if not self:isValidPed() then return false end
+
+    local coords = GetEntityCoords(self.ped)
+    local playerId, playerPed = lib.getClosestPlayer(coords, 20.0, false)
+
+    if playerPed then
+        distance = distance or 100.0
+        duration = duration or 10000
+        TaskSmartFleePed(self.ped, playerPed, distance, duration, false, false)
+        return true
+    end
+
+    return false
+end
+
+-- =====================================
+-- TAREAS DE SCENARIOS Y AMBIENTES
+-- =====================================
+
+-- Usar scenario en posición específica
+function lib.task:startScenarioAt(scenarioName, coords, heading, duration, sitOnGround)
+    if not self:isValidPed() then return false end
+
+    coords = coords or GetEntityCoords(self.ped)
+    heading = heading or GetEntityHeading(self.ped)
+    duration = duration or -1
+    sitOnGround = sitOnGround or false
+
+    TaskStartScenarioAtPosition(self.ped, scenarioName, coords.x, coords.y, coords.z, heading, duration, sitOnGround, true)
+    return true
+end
+
+-- =====================================
+-- TAREAS DE MOVIMIENTO AVANZADO
+-- =====================================
+
+-- Caminar con estilo específico
+function lib.task:walkWithStyle(movementClipset, coords, speed)
+    if not self:isValidPed() then return false end
+
+    -- Cargar clipset de movimiento
+    if lib.requestAnimSet(movementClipset) then
+        SetPedMovementClipset(self.ped, movementClipset, 1.0)
+
+        if coords then
+            speed = speed or 1.0
+            TaskGoStraightToCoord(self.ped, coords.x, coords.y, coords.z, speed, -1, GetEntityHeading(self.ped), 0.0)
+        end
+
+        return true
+    end
+
+    return false
+end
+
+-- Patrullar entre puntos
+function lib.task:patrol(waypoints, speed, waitTime)
+    if not self:isValidPed() then return false end
+    if not waypoints or #waypoints < 2 then return false end
+
+    speed = speed or 1.0
+    waitTime = waitTime or 2000
+
+    CreateThread(function()
+        local currentWaypoint = 1
+
+        while true do
+            local waypoint = waypoints[currentWaypoint]
+            if waypoint then
+                TaskGoStraightToCoord(self.ped, waypoint.x, waypoint.y, waypoint.z, speed, -1, 0.0, 0.0)
+
+                -- Esperar hasta llegar al punto
+                local timeout = 30000 -- 30 segundos timeout
+                local startTime = GetGameTimer()
+
+                while GetGameTimer() - startTime < timeout do
+                    local pedCoords = GetEntityCoords(self.ped)
+                    local distance = #(pedCoords - waypoint)
+
+                    if distance < 2.0 then
+                        break
+                    end
+
+                    Wait(500)
+                end
+
+                -- Esperar en el punto
+                Wait(waitTime)
+
+                -- Siguiente waypoint
+                currentWaypoint = currentWaypoint + 1
+                if currentWaypoint > #waypoints then
+                    currentWaypoint = 1 -- Volver al inicio
+                end
+            else
+                break
+            end
+        end
+    end)
+
+    return true
+end
+
+-- Caminar aleatoriamente en área
+function lib.task:wanderInArea(centerCoords, radius, duration)
+    if not self:isValidPed() then return false end
+
+    radius = radius or 50.0
+    duration = duration or -1
+
+    TaskWanderInArea(self.ped, centerCoords.x, centerCoords.y, centerCoords.z, radius, 1.0, 1.0)
+
+    if duration > 0 then
+        CreateThread(function()
+            Wait(duration)
+            self:clearTasks()
+        end)
+    end
+
+    return true
+end
+
+-- =====================================
+-- TAREAS ESPECIALES Y UTILIDADES
+-- =====================================
+
+-- Teletransportarse suavemente
+function lib.task:teleportSmooth(coords, heading)
+    if not self:isValidPed() then return false end
+
+    heading = heading or GetEntityHeading(self.ped)
+
+    -- Fade out
+    DoScreenFadeOut(1000)
+    Wait(1000)
+
+    -- Teletransportar
+    SetEntityCoords(self.ped, coords.x, coords.y, coords.z, false, false, false, true)
+    SetEntityHeading(self.ped, heading)
+
+    -- Fade in
+    Wait(500)
+    DoScreenFadeIn(1000)
+
+    return true
+end
+
+-- Congelar/descongelar ped
+function lib.task:freeze(state)
+    if not self:isValidPed() then return false end
+
+    FreezeEntityPosition(self.ped, state)
+    return true
+end
+
+-- Hacer invencible/vulnerable
+function lib.task:setInvincible(state)
+    if not self:isValidPed() then return false end
+
+    SetEntityInvincible(self.ped, state)
+    return true
+end
+
+-- Configurar relación con jugador
+function lib.task:setRelationshipWithPlayer(relationshipType)
+    if not self:isValidPed() then return false end
+
+    local playerGroup = GetPlayerGroup(PlayerId())
+    local pedGroup = GetPedRelationshipGroupHash(self.ped)
+
+    SetRelationshipBetweenGroups(relationshipType, pedGroup, playerGroup)
+    SetRelationshipBetweenGroups(relationshipType, playerGroup, pedGroup)
+
+    return true
+end
+
+-- =====================================
+-- FUNCIONES DE ESTADO Y VERIFICACIÓN
+-- =====================================
+
+-- Verificar si está ejecutando tarea específica
+function lib.task:isDoingTask(taskHash)
+    if not self:isValidPed() then return false end
+    return GetScriptTaskStatus(self.ped, taskHash) == 1
+end
+
+-- Obtener distancia a coordenadas
+function lib.task:getDistanceTo(coords)
+    if not self:isValidPed() then return nil end
+    local pedCoords = GetEntityCoords(self.ped)
+    return #(pedCoords - coords)
+end
+
+-- Verificar si puede ver entidad
+function lib.task:canSeeEntity(entity)
+    if not self:isValidPed() then return false end
+    if not entity or not DoesEntityExist(entity) then return false end
+
+    return HasEntityClearLosToEntity(self.ped, entity, 17)
+end
+
+-- Obtener vehículo más cercano
+function lib.task:getNearestVehicle(radius)
+    if not self:isValidPed() then return nil end
+
+    local coords = GetEntityCoords(self.ped)
+    radius = radius or 10.0
+
+    return lib.getClosestVehicle(coords, radius, true)
+end
+
+-- Obtener jugador más cercano
+function lib.task:getNearestPlayer(radius)
+    if not self:isValidPed() then return nil end
+
+    local coords = GetEntityCoords(self.ped)
+    radius = radius or 10.0
+
+    return lib.getClosestPlayer(coords, radius, false)
+end
+
+-- =====================================
+-- FUNCIONES AUXILIARES
+-- =====================================
+
+-- Función auxiliar para normalizar el índice de asiento
+function lib.task:_normalizeSeatIndex(seat)
+    if type(seat) == 'string' then
+        -- Si es string, buscar en el enum
+        local seatIndex = lib.enums.vehicles.SEATS[seat]
+        return seatIndex -- Puede ser nil si no existe
+    elseif type(seat) == 'number' then
+        -- Si es número, usar directamente
+        return seat
+    else
+        -- Valor por defecto: conductor
+        return -1
+    end
+end
+
+-- Validar si un asiento es válido
+function lib.task:_isValidSeat(seat)
+    local seatIndex = self:_normalizeSeatIndex(seat)
+    return seatIndex ~= nil
 end
 
 return lib.task
