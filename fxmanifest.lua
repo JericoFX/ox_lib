@@ -23,6 +23,15 @@ files {
     'resource/settings.lua',
     'imports/**/client.lua',
     'imports/**/shared.lua',
+    -- API Files
+    'api/enums/*.lua',
+    'api/**/init.lua',
+    'api/**/shared.lua',
+    'api/**/client.lua',
+    -- Wrapper Files
+    'wrappers/**/shared.lua',
+    'wrappers/**/client.lua',
+    -- Web Files
     'web/build/index.html',
     'web/build/**/*',
     'locales/*.json',
@@ -32,12 +41,21 @@ shared_script 'resource/init.lua'
 
 shared_scripts {
     'resource/**/shared.lua',
+    -- API Shared Files
+    'api/enums/*.lua',
+    'api/**/shared.lua',
+    -- Wrapper Shared Files
+    'wrappers/**/shared.lua',
     -- 'resource/**/shared/*.lua'
 }
 
 client_scripts {
     'resource/**/client.lua',
-    'resource/**/client/*.lua'
+    'resource/**/client/*.lua',
+    -- API Client Files
+    'api/**/client.lua',
+    -- Wrapper Client Files
+    'wrappers/**/client.lua'
 }
 
 server_scripts {
@@ -45,4 +63,8 @@ server_scripts {
     'imports/getFilesInDirectory/server.lua',
     'resource/**/server.lua',
     'resource/**/server/*.lua',
+    -- API Server Files
+    'api/**/server.lua',
+    -- Wrapper Server Files
+    'wrappers/**/server.lua'
 }

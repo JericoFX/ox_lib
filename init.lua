@@ -44,6 +44,7 @@ local context = IsDuplicityVersion() and 'server' or 'client'
 function noop() end
 
 local function loadModule(self, module)
+    -- Intentar cargar desde imports primero (retrocompatibilidad)
     local dir = ('imports/%s'):format(module)
     local chunk = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(dir, context))
     local shared = LoadResourceFile(ox_lib, ('%s/shared.lua'):format(dir))
@@ -70,6 +71,41 @@ local function loadModule(self, module)
         local result = fn()
         self[module] = result or noop
         return self[module]
+    end
+
+    -- Si no se encontró en imports, intentar cargar desde api?
+    local apiDir = ('api/%s'):format(module)
+    local apiContext = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(apiDir, context))
+
+    if apiContext then
+        local fn, err = load(apiContext, ('@@ox_lib/api/%s/%s.lua'):format(module, context))
+
+        if not fn or err then
+            return error(('\n^1Error importing API module (%s/%s.lua): %s^0'):format(module, context, err), 3)
+        end
+
+        local result = fn()
+        return result
+    end
+
+    -- Si no se encontró en api/, intentar cargar desde wrappers/ para mi que es mejor un if pero ta....
+    local wrapperPath = ('wrappers/%s/%s.lua'):format(module, context)
+    chunk = LoadResourceFile(ox_lib, wrapperPath)
+
+    if not chunk then
+        wrapperPath = ('wrappers/%s/shared.lua'):format(module)
+        chunk = LoadResourceFile(ox_lib, wrapperPath)
+    end
+
+    if chunk then
+        local fn, err = load(chunk, ('@@ox_lib/%s'):format(wrapperPath))
+
+        if not fn or err then
+            return error(('\n^1Error importing wrapper class (%s): %s^0'):format(wrapperPath, err), 3)
+        end
+
+        local result = fn()
+        return result
     end
 end
 
@@ -295,5 +331,18 @@ for i = 1, GetNumResourceMetadata(cache.resource, 'ox_lib') do
         local module = loadModule(lib, name)
 
         if type(module) == 'function' then pcall(module) end
+    end
+end
+
+do
+    local enumsPath = 'api/enums/init.lua'
+    local enumsChunk = LoadResourceFile(ox_lib, enumsPath)
+
+    if enumsChunk then
+        local fn, err = load(enumsChunk, ('@@ox_lib/%s'):format(enumsPath))
+
+        if fn and not err then
+            pcall(fn)
+        end
     end
 end
