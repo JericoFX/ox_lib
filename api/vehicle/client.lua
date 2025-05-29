@@ -17,6 +17,194 @@ function lib.vehicle:constructor(vehicle)
 end
 
 -- =====================================
+-- FUNCIONES DE CREACIÓN
+-- =====================================
+
+-- Función estática para crear un vehículo con callback
+function lib.vehicle.create(model, coords, heading, callback, options)
+    options = options or {}
+
+    -- Validar parámetros
+    if type(model) ~= 'string' and type(model) ~= 'number' then
+        if callback then callback(false, 'Modelo de vehículo inválido') end
+        return false
+    end
+
+    if type(coords) ~= 'vector3' and type(coords) ~= 'table' then
+        if callback then callback(false, 'Coordenadas inválidas') end
+        return false
+    end
+
+    heading = heading or 0.0
+
+    -- Convertir coordenadas si es necesario
+    local vehicleCoords = coords
+    if type(coords) == 'table' then
+        vehicleCoords = vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
+    end
+
+    -- Asegurarse de que el modelo esté cargado
+    local modelHash = type(model) == 'string' and joaat(model) or model
+
+    if not IsModelInCdimage(modelHash) or not IsModelAVehicle(modelHash) then
+        if callback then callback(false, 'Modelo de vehículo no válido: ' .. tostring(model)) end
+        return false
+    end
+
+    -- Cargar el modelo con callback
+    lib.requestModel(modelHash, function(success)
+        if not success then
+            if callback then callback(false, 'No se pudo cargar el modelo: ' .. tostring(model)) end
+            return
+        end
+
+        -- Crear el vehículo
+        local vehicle = CreateVehicle(modelHash, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading, true, false)
+
+        if not vehicle or vehicle == 0 then
+            SetModelAsNoLongerNeeded(modelHash)
+            if callback then callback(false, 'No se pudo crear el vehículo') end
+            return
+        end
+
+        -- Aplicar opciones adicionales si se proporcionan
+        if options.plate then
+            SetVehicleNumberPlateText(vehicle, options.plate)
+        end
+
+        if options.color then
+            if type(options.color) == 'table' then
+                if options.color.primary and options.color.secondary then
+                    SetVehicleColours(vehicle, options.color.primary, options.color.secondary)
+                elseif options.color[1] and options.color[2] then
+                    SetVehicleColours(vehicle, options.color[1], options.color[2])
+                end
+            end
+        end
+
+        if options.fuel ~= nil then
+            SetVehicleFuelLevel(vehicle, options.fuel)
+        end
+
+        if options.engineHealth then
+            SetVehicleEngineHealth(vehicle, options.engineHealth)
+        end
+
+        if options.locked ~= nil then
+            SetVehicleDoorsLocked(vehicle, options.locked and 2 or 1)
+        end
+
+        if options.engineOn ~= nil then
+            SetVehicleEngineOn(vehicle, options.engineOn, true, true)
+        end
+
+        -- Crear instancia de la clase vehicle
+        local vehicleInstance = lib.vehicle:new(vehicle)
+
+        -- Limpiar modelo
+        SetModelAsNoLongerNeeded(modelHash)
+
+        -- Ejecutar callback con éxito
+        if callback then
+            callback(true, 'Vehículo creado exitosamente', vehicleInstance, vehicle)
+        end
+    end)
+
+    return true
+end
+
+-- Función estática para crear un vehículo y colocar al jugador dentro
+function lib.vehicle.createAndEnter(model, coords, heading, seatName, callback, options)
+    seatName = seatName or 'DRIVER'
+
+    lib.vehicle.create(model, coords, heading, function(success, message, vehicleInstance, vehicleEntity)
+        if not success then
+            if callback then callback(false, message) end
+            return
+        end
+
+        -- Obtener el ped del jugador
+        local playerPed = PlayerPedId()
+
+        -- Obtener el índice del asiento
+        local seatIndex = lib.enums.vehicles.SEATS[seatName]
+        if not seatIndex then
+            if callback then callback(false, 'Asiento inválido: ' .. tostring(seatName)) end
+            return
+        end
+
+        -- Colocar al jugador en el vehículo
+        TaskWarpPedIntoVehicle(playerPed, vehicleEntity, seatIndex)
+
+        if callback then
+            callback(true, 'Vehículo creado y jugador colocado exitosamente', vehicleInstance, vehicleEntity)
+        end
+    end, options)
+end
+
+-- Función estática para crear múltiples vehículos con callback
+function lib.vehicle.createMultiple(vehicles, callback)
+    if type(vehicles) ~= 'table' then
+        if callback then callback(false, 'Lista de vehículos inválida') end
+        return false
+    end
+
+    local createdVehicles = {}
+    local totalVehicles = #vehicles
+    local completedVehicles = 0
+    local hasError = false
+
+    if totalVehicles == 0 then
+        if callback then callback(true, 'No hay vehículos para crear', {}) end
+        return true
+    end
+
+    -- Función para verificar si todos los vehículos han sido procesados
+    local function checkCompletion()
+        completedVehicles = completedVehicles + 1
+
+        if completedVehicles >= totalVehicles then
+            if hasError then
+                if callback then callback(false, 'Algunos vehículos no pudieron ser creados', createdVehicles) end
+            else
+                if callback then callback(true, 'Todos los vehículos creados exitosamente', createdVehicles) end
+            end
+        end
+    end
+
+    -- Crear cada vehículo
+    for i, vehicleData in ipairs(vehicles) do
+        lib.vehicle.create(
+            vehicleData.model,
+            vehicleData.coords,
+            vehicleData.heading,
+            function(success, message, vehicleInstance, vehicleEntity)
+                if success then
+                    createdVehicles[i] = {
+                        success = true,
+                        instance = vehicleInstance,
+                        entity = vehicleEntity,
+                        originalData = vehicleData
+                    }
+                else
+                    hasError = true
+                    createdVehicles[i] = {
+                        success = false,
+                        error = message,
+                        originalData = vehicleData
+                    }
+                end
+
+                checkCompletion()
+            end,
+            vehicleData.options
+        )
+    end
+
+    return true
+end
+
+-- =====================================
 -- FUNCIONES CLIENT
 -- =====================================
 
@@ -400,6 +588,157 @@ function lib.vehicle:setColor(primaryColorName, secondaryColorName)
         return true
     end
     return false
+end
+
+-- =====================================
+-- FUNCIONES DE ELIMINACIÓN
+-- =====================================
+
+-- Eliminar este vehículo con callback
+function lib.vehicle:delete(callback)
+    if not self:isValid() then
+        if callback then callback(false, 'Vehículo no válido') end
+        return false
+    end
+
+    local vehicleEntity = self.vehicle
+
+    -- Eliminar el vehículo
+    DeleteVehicle(vehicleEntity)
+
+    -- Verificar si se eliminó correctamente
+    local success = not DoesEntityExist(vehicleEntity)
+
+    if success then
+        self.vehicle = nil
+        if callback then callback(true, 'Vehículo eliminado exitosamente') end
+    else
+        if callback then callback(false, 'No se pudo eliminar el vehículo') end
+    end
+
+    return success
+end
+
+-- Función estática para eliminar un vehículo por entity con callback
+function lib.vehicle.deleteEntity(vehicleEntity, callback)
+    if not vehicleEntity or vehicleEntity == 0 or not DoesEntityExist(vehicleEntity) then
+        if callback then callback(false, 'Entidad de vehículo no válida') end
+        return false
+    end
+
+    -- Eliminar el vehículo
+    DeleteVehicle(vehicleEntity)
+
+    -- Verificar si se eliminó correctamente
+    local success = not DoesEntityExist(vehicleEntity)
+
+    if success then
+        if callback then callback(true, 'Vehículo eliminado exitosamente') end
+    else
+        if callback then callback(false, 'No se pudo eliminar el vehículo') end
+    end
+
+    return success
+end
+
+-- Función estática para eliminar múltiples vehículos con callback
+function lib.vehicle.deleteMultiple(vehicles, callback)
+    if type(vehicles) ~= 'table' then
+        if callback then callback(false, 'Lista de vehículos inválida') end
+        return false
+    end
+
+    local deletedVehicles = {}
+    local totalVehicles = #vehicles
+    local hasError = false
+
+    if totalVehicles == 0 then
+        if callback then callback(true, 'No hay vehículos para eliminar', {}) end
+        return true
+    end
+
+    -- Eliminar cada vehículo
+    for i, vehicle in ipairs(vehicles) do
+        local vehicleEntity = vehicle
+
+        -- Si es una instancia de lib.vehicle, obtener la entidad
+        if type(vehicle) == 'table' and vehicle.vehicle then
+            vehicleEntity = vehicle.vehicle
+        end
+
+        local success = false
+        local message = ''
+
+        if vehicleEntity and vehicleEntity ~= 0 and DoesEntityExist(vehicleEntity) then
+            DeleteVehicle(vehicleEntity)
+            success = not DoesEntityExist(vehicleEntity)
+            message = success and 'Eliminado exitosamente' or 'No se pudo eliminar'
+        else
+            message = 'Vehículo no válido'
+        end
+
+        if not success then
+            hasError = true
+        end
+
+        deletedVehicles[i] = {
+            success = success,
+            message = message,
+            originalVehicle = vehicle
+        }
+    end
+
+    if callback then
+        if hasError then
+            callback(false, 'Algunos vehículos no pudieron ser eliminados', deletedVehicles)
+        else
+            callback(true, 'Todos los vehículos eliminados exitosamente', deletedVehicles)
+        end
+    end
+
+    return not hasError
+end
+
+-- Función estática para eliminar vehículos en un área con callback
+function lib.vehicle.deleteInArea(coords, radius, callback, filterFunction)
+    if type(coords) ~= 'vector3' and type(coords) ~= 'table' then
+        if callback then callback(false, 'Coordenadas inválidas') end
+        return false
+    end
+
+    radius = radius or 10.0
+
+    -- Convertir coordenadas si es necesario
+    local areaCoords = coords
+    if type(coords) == 'table' then
+        areaCoords = vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
+    end
+
+    -- Obtener vehículos cercanos
+    local nearbyVehicles = lib.getNearbyVehicles(areaCoords, radius, true)
+    local vehiclesToDelete = {}
+
+    -- Filtrar vehículos si se proporciona una función de filtro
+    for _, vehicleData in ipairs(nearbyVehicles) do
+        local shouldDelete = true
+
+        if filterFunction and type(filterFunction) == 'function' then
+            shouldDelete = filterFunction(vehicleData.vehicle, vehicleData)
+        end
+
+        if shouldDelete then
+            table.insert(vehiclesToDelete, vehicleData.vehicle)
+        end
+    end
+
+    -- Eliminar los vehículos filtrados
+    lib.vehicle.deleteMultiple(vehiclesToDelete, function(success, message, results)
+        if callback then
+            callback(success, message, results, #vehiclesToDelete)
+        end
+    end)
+
+    return true
 end
 
 return lib.vehicle

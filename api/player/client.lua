@@ -110,23 +110,23 @@ function lib.player:getPedState()
     if IsEntityDead(ped) then
         return lib.enums.peds.PED_STATES.DEAD
     elseif IsPedRagdoll(ped) then
-        return 'RAGDOLL'
+        return lib.enums.peds.PED_STATES.RAGDOLL
     elseif IsPedInAnyVehicle(ped, false) then
-        return 'DRIVING'
+        return lib.enums.peds.PED_STATES.DRIVING
     elseif IsPedSwimming(ped) then
-        return 'SWIMMING'
+        return lib.enums.peds.PED_STATES.SWIMMING
     elseif IsPedFalling(ped) then
-        return 'FALLING'
+        return lib.enums.peds.PED_STATES.FALLING
     elseif IsPedClimbing(ped) then
-        return 'CLIMBING'
+        return lib.enums.peds.PED_STATES.CLIMBING
     elseif IsPedSprinting(ped) then
-        return 'SPRINTING'
+        return lib.enums.peds.PED_STATES.SPRINTING
     elseif IsPedRunning(ped) then
-        return 'RUNNING'
+        return lib.enums.peds.PED_STATES.RUNNING
     elseif IsPedWalking(ped) then
-        return 'WALKING'
+        return lib.enums.peds.PED_STATES.WALKING
     else
-        return 'IDLE'
+        return lib.enums.peds.PED_STATES.IDLE
     end
 end
 
