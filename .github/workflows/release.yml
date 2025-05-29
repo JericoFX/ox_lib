@@ -58,10 +58,14 @@ jobs:
           git push origin "$TAG"
 
       - name: Install project dependencies (if needed)
-        run: bun install --frozen-lockfile
-
+        run: |
+          cd web
+          bun install --frozen-lockfile
+      
       - name: Run build script
-        run: bun run build
+        run: |
+          cd web
+          bun run build
 
       - name: Create ZIP bundle
         run: |
