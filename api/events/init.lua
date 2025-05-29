@@ -144,16 +144,14 @@ function events.on(eventName, callback)
 
             if IsDuplicityVersion() then
                 -- Server-side
-                RegisterServerEvent(frameworkEvent)
-                AddEventHandler(frameworkEvent, function(...)
+                RegisterServerEvent(frameworkEvent, function(...)
                     local args = { ... }
                     local normalizedData = normalizePlayerData(framework, args[1])
                     events.trigger(eventName, normalizedData, table.unpack(args, 2))
                 end)
             else
                 -- Client-side
-                RegisterNetEvent(frameworkEvent)
-                AddEventHandler(frameworkEvent, function(...)
+                RegisterNetEvent(frameworkEvent, function(...)
                     local args = { ... }
                     local normalizedData = normalizePlayerData(framework, args[1])
                     events.trigger(eventName, normalizedData, table.unpack(args, 2))
