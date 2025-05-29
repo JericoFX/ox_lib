@@ -25,7 +25,7 @@ function lib.player:getPed()
     if self.playerId == cache.ped then
         return PlayerPedId()
     else
-        return GetPlayerPed(GetPlayerFromServerId(self.playerId))
+        return cache.serverId
     end
 end
 
@@ -108,7 +108,7 @@ function lib.player:getPedState()
     if not ped or ped == 0 then return nil end
 
     if IsEntityDead(ped) then
-        return 'DEAD'
+        return lib.enums.peds.PED_STATES.DEAD
     elseif IsPedRagdoll(ped) then
         return 'RAGDOLL'
     elseif IsPedInAnyVehicle(ped, false) then
