@@ -37,9 +37,8 @@ files {
     'locales/*.json',
 }
 
-shared_script 'resource/init.lua'
-
 shared_scripts {
+    'resource/init.lua',
     'resource/**/shared.lua',
     -- API Shared Files
     'api/enums/*.lua',
