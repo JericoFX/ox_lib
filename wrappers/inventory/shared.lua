@@ -33,19 +33,34 @@ local function loadSystemFunctions(system)
     return {}
 end
 
--- Singleton instance
-local inventoryInstance
-local system = detectSystem()
+-- Mapeo de recursos a sistemas
+local inventoryMapping = {
+    ['ox_inventory'] = 'ox_inventory',
+    ['qb-inventory'] = 'qb-inventory',
+    ['qs-inventory'] = 'qs-inventory'
+}
 
-if system then
-    inventoryInstance = loadSystemFunctions(system)
-    inventoryInstance.system = system
-else
-    inventoryInstance = {
-        system = 'unknown'
-    }
-end
+-- Inicializar con sistema unknown
+lib.inventory = {
+    system = 'unknown'
+}
 
-lib.inventory = inventoryInstance
+-- Escuchar cuando se inician los inventarios
+AddEventHandler('onResourceStart', function(resourceName)
+    local system = inventoryMapping[resourceName]
+
+    if system then
+        print('^2========================================')
+        print('^2[INVENTORY INICIADO]^0')
+        print('^2Recurso: ^5' .. resourceName)
+        print('^2Inventory: ^5' .. system)
+        print('^2========================================^0')
+
+        local inventoryInstance = loadSystemFunctions(system)
+        inventoryInstance.system = system
+
+        lib.inventory = inventoryInstance
+    end
+end)
 
 return lib.inventory

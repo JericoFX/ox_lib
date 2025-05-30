@@ -88,23 +88,50 @@ local function loadModule(self, module)
         return result
     end
 
-    -- Si no se encontró en api/, intentar cargar desde wrappers/ para mi que es mejor un if pero ta....
+    -- Si no se encontró en api/, intentar cargar desde wrappers/
     local wrapperPath = ('wrappers/%s/%s.lua'):format(module, context)
     chunk = LoadResourceFile(ox_lib, wrapperPath)
+    local sharedWrapper = LoadResourceFile(ox_lib, ('wrappers/%s/shared.lua'):format(module))
 
-    if not chunk then
-        wrapperPath = ('wrappers/%s/shared.lua'):format(module)
-        chunk = LoadResourceFile(ox_lib, wrapperPath)
+    if sharedWrapper then
+        chunk = (chunk and ('%s\n%s'):format(sharedWrapper, chunk)) or sharedWrapper
     end
 
     if chunk then
-        local fn, err = load(chunk, ('@@ox_lib/%s'):format(wrapperPath))
+        -- Cartel grande para mostrar que se está cargando el wrapper
+        print('^0========================================')
+        print('^2[OX_LIB WRAPPER LOADER]^0')
+        print('^3Módulo: ^5' .. module)
+        print('^3Contexto: ^5' .. context)
+        print('^3Archivo: ^5' .. wrapperPath)
+        if sharedWrapper then
+            print('^3Shared: ^2✓ Cargado')
+        else
+            print('^3Shared: ^1✗ No encontrado')
+        end
+        print('^0========================================^0')
+
+        local fn, err = load(chunk, ('@@ox_lib/wrappers/%s/%s.lua'):format(module, context))
 
         if not fn or err then
-            return error(('\n^1Error importing wrapper class (%s): %s^0'):format(wrapperPath, err), 3)
+            print('^1========================================')
+            print('^1[ERROR AL CARGAR WRAPPER]')
+            print('^1Módulo: ' .. module)
+            print('^1Error: ' .. tostring(err))
+            print('^1========================================^0')
+            return error(('\n^1Error importing wrapper class (wrappers/%s): %s^0'):format(module, err), 3)
         end
 
         local result = fn()
+
+        print('^2========================================')
+        print('^2[WRAPPER CARGADO EXITOSAMENTE]')
+        print('^2Módulo: ^5' .. module)
+        if module == 'core' and result and result.framework then
+            print('^2Framework detectado: ^5' .. result.framework)
+        end
+        print('^2========================================^0')
+
         return result
     end
 end

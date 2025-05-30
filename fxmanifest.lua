@@ -6,7 +6,7 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 
 name 'ox_lib'
 author 'Overextended'
-version '2.45.4'
+version '3.30.1'
 license 'LGPL-3.0-or-later'
 repository 'https://github.com/communityox/ox_lib'
 description 'A library of shared functions to utilise in other resources.'
@@ -24,7 +24,7 @@ files {
     'imports/**/client.lua',
     'imports/**/shared.lua',
     -- API Files
-    'api/enums/*.lua',
+    'api/enums/**/*.lua',
     'api/**/init.lua',
     'api/**/shared.lua',
     'api/**/client.lua',
@@ -54,7 +54,7 @@ client_scripts {
     -- API Client Files
     'api/**/client.lua',
     -- Wrapper Client Files
-    'wrappers/**/client.lua'
+    'wrappers/**/**/client.lua'
 }
 
 server_scripts {
@@ -63,7 +63,7 @@ server_scripts {
     'resource/**/server.lua',
     'resource/**/server/*.lua',
     -- API Server Files
-    'api/**/server.lua',
+    'api/**/**/server.lua',
     -- Wrapper Server Files
     'wrappers/**/server.lua'
 }

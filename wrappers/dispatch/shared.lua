@@ -34,19 +34,35 @@ local function loadSystemFunctions(system)
     return {}
 end
 
--- Singleton instance
-local dispatchInstance
-local system = detectSystem()
+-- Mapeo de recursos a sistemas
+local dispatchMapping = {
+    ['cd_dispatch'] = 'cd_dispatch',
+    ['ps-dispatch'] = 'ps-dispatch',
+    ['qs-dispatch'] = 'qs-dispatch',
+    ['origen_police'] = 'origen_police'
+}
 
-if system then
-    dispatchInstance = loadSystemFunctions(system)
-    dispatchInstance.system = system
-else
-    dispatchInstance = {
-        system = 'unknown'
-    }
-end
+-- Inicializar con sistema unknown
+lib.dispatch = {
+    system = 'unknown'
+}
 
-lib.dispatch = dispatchInstance
+-- Escuchar cuando se inician los dispatches
+AddEventHandler('onResourceStart', function(resourceName)
+    local system = dispatchMapping[resourceName]
+
+    if system then
+        print('^2========================================')
+        print('^2[DISPATCH INICIADO]^0')
+        print('^2Recurso: ^5' .. resourceName)
+        print('^2Dispatch: ^5' .. system)
+        print('^2========================================^0')
+
+        local dispatchInstance = loadSystemFunctions(system)
+        dispatchInstance.system = system
+
+        lib.dispatch = dispatchInstance
+    end
+end)
 
 return lib.dispatch

@@ -2,6 +2,10 @@
     QBCore Framework Server Functions
 ]]
 
+if GetResourceState('qb-core') ~= 'started' then
+    return
+end
+
 local QBCore = exports['qb-core']:GetCoreObject()
 
 local function normalizePlayer(qbPlayer)

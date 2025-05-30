@@ -1,7 +1,10 @@
 --[[
   Mueve las funciones que se puedan de qb a ox_lib y usa el cache para datos mas normales como el citizenid y esas cosas
 ]]
-
+if not GetResourceState('qb-core') == 'started' then
+    error('QB-Core framework is not started. Please ensure qb-core is running.')
+    return
+end
 -- Crear clase local, NO asignar a lib.core directamente
 local Core = lib.class('Core')
 

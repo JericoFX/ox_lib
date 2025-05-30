@@ -1,18 +1,25 @@
 local function detectFramework()
-    if GetResourceState('es_extended') == 'started' then
-        return 'esx_extended'
-    elseif GetResourceState('qb-core') == 'started' then
-        return 'qb-core'
-    elseif GetResourceState('qbx_core') == 'started' then
-        return 'qbx_core'
-    else
-        return nil
+    -- Lista de frameworks a verificar
+    local frameworks = {
+        { name = 'esx_extended', folder = 'esx_extended' },
+        { name = 'es_extended',  folder = 'esx_extended' },
+        { name = 'qb-core',      folder = 'qb-core' },
+        { name = 'qbx_core',     folder = 'qb-core' },
+        { name = 'ox_core',      folder = 'ox_core' }
+    }
+
+    for _, framework in ipairs(frameworks) do
+        local state = GetResourceState(framework.name)
+        if state == 'started' then
+            return framework.folder, framework.name
+        end
     end
+
+    return nil, nil
 end
 
 local function loadFrameworkFunctions(framework)
     if not framework then return {} end
-
     local context = lib.context
     local frameworkPath = ('wrappers/core/%s/%s.lua'):format(framework, context)
     local chunk = LoadResourceFile('ox_lib', frameworkPath)
@@ -25,26 +32,47 @@ local function loadFrameworkFunctions(framework)
     if chunk then
         local fn, err = load(chunk, ('@@ox_lib/%s'):format(frameworkPath))
         if fn and not err then
+            print('^2[FRAMEWORK LOADER] Cargado exitosamente: ^5' .. frameworkPath)
             return fn() or {}
+        else
+            print('^1[FRAMEWORK LOADER] Error al cargar: ^5' .. frameworkPath .. ' Error: ' .. tostring(err))
         end
     end
 
     return {}
 end
 
--- Singleton instance
-local coreInstance
-local framework = detectFramework()
+-- Mapeo de recursos a frameworks
+local frameworkMapping = {
+    ['esx_extended'] = 'esx_extended',
+    ['es_extended'] = 'esx_extended',
+    ['qb-core'] = 'qb-core',
+    ['qbx_core'] = 'qb-core',
+    ['ox_core'] = 'ox_core'
+}
 
-if framework then
-    coreInstance = loadFrameworkFunctions(framework)
-    coreInstance.framework = framework
-else
-    coreInstance = {
-        framework = 'unknown'
-    }
-end
+-- Inicializar con framework unknown
+lib.core = {
+    framework = 'unknown'
+}
 
-lib.core = coreInstance
+-- Escuchar cuando se inician los frameworks
+AddEventHandler('onResourceStart', function(resourceName)
+    local framework = frameworkMapping[resourceName]
+
+    if framework then
+        print('^2========================================')
+        print('^2[FRAMEWORK INICIADO]^0')
+        print('^2Recurso: ^5' .. resourceName)
+        print('^2Framework: ^5' .. framework)
+        print('^2========================================^0')
+
+        local coreInstance = loadFrameworkFunctions(framework)
+        coreInstance.framework = framework
+        coreInstance.resourceName = resourceName
+
+        lib.core = coreInstance
+    end
+end)
 
 return lib.core

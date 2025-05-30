@@ -1,6 +1,10 @@
 --[[
     ESX pasarlo a clase y lo mismo que el qb
 ]]
+if not GetResourceState('es_extended') == 'started' then
+    error('ESX framework is not started. Please ensure es_extended is running.')
+    return
+end
 
 -- Crear clase local, NO asignar a lib.core directamente
 local Core = lib.class('Core')
