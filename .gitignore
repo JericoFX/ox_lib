@@ -15,3 +15,4 @@ pnpm-debug.log*
 documentation/NPC_SYSTEM.md
 ARCHITECTURE.md
 documentation/SYSTEMS_OVERVIEW.md
+imports/npc/examples.lua
