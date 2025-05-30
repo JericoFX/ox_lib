@@ -1,9 +1,18 @@
---[[
-    Game Flags and States Enums
-]]
+---@meta
+
+---Game Flags and States Enumerations
+---@class FlagEnums
+---@field CONTROLS table<string, number> Control input flags
+---@field ENTITY_STATES table<string, number> Entity state flags
+---@field PED_STATES table<string, number> Ped state flags
+---@field NOTIFY_TYPES table<string, string> Notification type flags
+---@field KEY_STATES table<string, number> Key state flags
+---@field BLIP_TYPES table<string, number> Blip type flags
+---@field BLIP_COLORS table<string, number> Blip color IDs
 
 return {
     -- Control Flags
+    ---@enum ControlFlags
     CONTROLS = {
         LOOK_LR = 1,
         LOOK_UD = 2,
@@ -88,6 +97,7 @@ return {
     },
 
     -- Entity States
+    ---@enum EntityStates
     ENTITY_STATES = {
         SPAWNED = 0,
         CREATED = 1,
@@ -100,6 +110,7 @@ return {
     },
 
     -- Ped States
+    ---@enum PedStates
     PED_STATES = {
         IDLE = 0,
         WALKING = 1,
@@ -119,6 +130,7 @@ return {
     },
 
     -- Notification Types
+    ---@enum NotifyTypes
     NOTIFY_TYPES = {
         INFO = 'info',
         SUCCESS = 'success',
@@ -128,6 +140,7 @@ return {
     },
 
     -- Key States
+    ---@enum KeyStates
     KEY_STATES = {
         UP = 0,
         DOWN = 1,
@@ -136,6 +149,7 @@ return {
     },
 
     -- Blip Types
+    ---@enum BlipTypes
     BLIP_TYPES = {
         COORD = 1,
         AREA = 2,
@@ -149,6 +163,7 @@ return {
     },
 
     -- Blip Colors
+    ---@enum BlipColors
     BLIP_COLORS = {
         WHITE = 0,
         RED = 1,

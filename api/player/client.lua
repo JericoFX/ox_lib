@@ -1,10 +1,13 @@
---[[
-    Player API Class - Client Only
-    Sistema de clases solo para el lado del cliente
-]]
+---@meta
 
-lib.player = lib.class('Player')
+---@class lib.player
+---@field playerId number The player ID or cache.ped if not specified
+local Player = {}
 
+---Player API Class - Client Only
+---Player management system for client-side only
+---@param playerId? number If passed, it's for that specific player. If not passed, uses cache.ped
+---@return lib.player
 function lib.player:constructor(playerId)
     -- Si se pasa playerId, es para ese jugador específico
     -- Si no se pasa, usa el cache.ped
@@ -12,15 +15,17 @@ function lib.player:constructor(playerId)
 end
 
 -- =====================================
--- FUNCIONES CLIENT
+-- CLIENT FUNCTIONS
 -- =====================================
 
--- Obtener el jugador local
+---Get the local player
+---@return number ped The local player ped
 function lib.player:getLocalPlayer()
     return cache.ped
 end
 
--- Obtener el ped del jugador local o del jugador específico
+---Get the ped of the local player or specific player
+---@return number ped The player ped entity
 function lib.player:getPed()
     if self.playerId == cache.ped then
         return PlayerPedId()
@@ -29,7 +34,8 @@ function lib.player:getPed()
     end
 end
 
--- Obtener posición del jugador
+---Get player position
+---@return vector3? coords The player coordinates or nil if invalid
 function lib.player:getPosition()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -38,7 +44,8 @@ function lib.player:getPosition()
     return nil
 end
 
--- Obtener heading del jugador
+---Get player heading
+---@return number heading The player heading in degrees
 function lib.player:getHeading()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -47,7 +54,8 @@ function lib.player:getHeading()
     return 0
 end
 
--- Verificar si el jugador está en un vehículo
+---Check if player is in a vehicle
+---@return number|false vehicle The vehicle entity or false if not in vehicle
 function lib.player:isInVehicle()
     local ped = self:getPed()
     if ped and ped ~= 0 and IsPedInAnyVehicle(ped, false) then
@@ -56,7 +64,8 @@ function lib.player:isInVehicle()
     return false
 end
 
--- Obtener vehículo actual del jugador
+---Get player's current vehicle
+---@return number? vehicle The vehicle entity or nil if not in vehicle
 function lib.player:getCurrentVehicle()
     local ped = self:getPed()
     if ped and ped ~= 0 and IsPedInAnyVehicle(ped, false) then
@@ -65,7 +74,8 @@ function lib.player:getCurrentVehicle()
     return nil
 end
 
--- Verificar si el jugador está manejando
+---Check if player is driving
+---@return boolean driving True if player is driving
 function lib.player:isDriving()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -77,7 +87,9 @@ function lib.player:isDriving()
     return false
 end
 
--- Obtener asiento actual del jugador en el vehículo
+---Get player's current seat in vehicle
+---@return string? seatName The seat name from enums
+---@return number? seatIndex The seat index (-1 for driver, 0+ for passengers)
 function lib.player:getVehicleSeat()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -93,7 +105,8 @@ function lib.player:getVehicleSeat()
     return nil, nil
 end
 
--- Verificar si el jugador está muerto
+---Check if player is dead
+---@return boolean dead True if player is dead
 function lib.player:isDead()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -102,7 +115,8 @@ function lib.player:isDead()
     return false
 end
 
--- Obtener estado del ped usando enums
+---Get ped state using enums
+---@return string? state The ped state from enums or nil if invalid ped
 function lib.player:getPedState()
     local ped = self:getPed()
     if not ped or ped == 0 then return nil end
@@ -130,7 +144,8 @@ function lib.player:getPedState()
     end
 end
 
--- Obtener nivel de salud del jugador
+---Get player's health level
+---@return number health The health value (0-200 typically)
 function lib.player:getHealth()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -139,7 +154,8 @@ function lib.player:getHealth()
     return 0
 end
 
--- Obtener nivel de armadura del jugador
+---Get player's armor level
+---@return number armor The armor value (0-100 typically)
 function lib.player:getArmour()
     local ped = self:getPed()
     if ped and ped ~= 0 then
@@ -148,7 +164,8 @@ function lib.player:getArmour()
     return 0
 end
 
--- Verificar si el jugador está en línea (para otros jugadores)
+---Check if player is online (for other players)
+---@return boolean online True if player is online
 function lib.player:isOnline()
     if self.playerId == cache.ped then
         return true
@@ -163,7 +180,9 @@ function lib.player:isOnline()
     return false
 end
 
--- Obtener distancia entre jugadores
+---Get distance between players
+---@param otherPlayer lib.player|vector3 Other player instance or coordinates
+---@return number? distance The distance in units or nil if invalid
 function lib.player:getDistanceFrom(otherPlayer)
     local myPos = self:getPosition()
     local otherPos

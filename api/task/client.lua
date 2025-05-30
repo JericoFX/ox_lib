@@ -1,10 +1,13 @@
---[[
-    Task API Class - Client Only
-    Sistema de clases solo para el lado del cliente
-]]
+---@meta
 
-lib.task = lib.class('Task')
+---@class lib.task
+---@field ped number The ped entity this task system controls
+local Task = {}
 
+---Task API Class - Client Only
+---Task management system for client-side only
+---@param ped? number If passed, it's for that specific ped. If not passed, uses cache.ped
+---@return lib.task
 function lib.task:constructor(ped)
     -- Si se pasa ped, es para ese ped específico
     -- Si no se pasa, es para el ped local
@@ -12,15 +15,17 @@ function lib.task:constructor(ped)
 end
 
 -- =====================================
--- FUNCIONES CLIENT
+-- CLIENT FUNCTIONS
 -- =====================================
 
--- Verificar si el ped es válido
+---Check if the ped is valid
+---@return boolean valid True if ped exists and is valid
 function lib.task:isValidPed()
     return self.ped and self.ped ~= 0 and DoesEntityExist(self.ped)
 end
 
--- Limpiar todas las tareas
+---Clear all tasks
+---@return boolean success True if tasks were cleared successfully
 function lib.task:clearTasks()
     if not self:isValidPed() then return false end
 
@@ -28,7 +33,8 @@ function lib.task:clearTasks()
     return true
 end
 
--- Limpiar tareas inmediatamente
+---Clear tasks immediately
+---@return boolean success True if tasks were cleared successfully
 function lib.task:clearTasksImmediately()
     if not self:isValidPed() then return false end
 
@@ -36,7 +42,15 @@ function lib.task:clearTasksImmediately()
     return true
 end
 
--- Reproducir animación
+---Play animation
+---@param dict string Animation dictionary
+---@param name string Animation name
+---@param blendInSpeed? number Blend in speed (default: 8.0)
+---@param blendOutSpeed? number Blend out speed (default: -8.0)
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@param flag? number Animation flag (default: 0)
+---@param playbackRate? number Playback rate (default: 0.0)
+---@return boolean success True if animation started successfully
 function lib.task:playAnim(dict, name, blendInSpeed, blendOutSpeed, duration, flag, playbackRate)
     if not self:isValidPed() then return false end
 
@@ -54,7 +68,13 @@ function lib.task:playAnim(dict, name, blendInSpeed, blendOutSpeed, duration, fl
     return false
 end
 
--- Caminar hacia coordenadas
+---Walk to coordinates
+---@param coords vector3 Target coordinates
+---@param speed? number Movement speed (default: 1.0)
+---@param timeout? number Timeout in milliseconds (default: 20000)
+---@param stoppingRange? number Stopping distance (default: 0.0)
+---@param persistFollowing? boolean Persist following (default: false)
+---@return boolean success True if task started successfully
 function lib.task:goToCoord(coords, speed, timeout, stoppingRange, persistFollowing)
     if not self:isValidPed() then return false end
 
@@ -67,7 +87,13 @@ function lib.task:goToCoord(coords, speed, timeout, stoppingRange, persistFollow
     return true
 end
 
--- Conducir hacia coordenadas
+---Drive to coordinates
+---@param vehicle number Vehicle entity
+---@param coords vector3 Target coordinates
+---@param speed? number Driving speed (default: 20.0)
+---@param driveStyle? number Driving style flag (default: 786603)
+---@param stoppingRange? number Stopping distance (default: 2.0)
+---@return boolean success True if task started successfully
 function lib.task:driveToCoord(vehicle, coords, speed, driveStyle, stoppingRange)
     if not self:isValidPed() then return false end
 
@@ -79,7 +105,11 @@ function lib.task:driveToCoord(vehicle, coords, speed, driveStyle, stoppingRange
     return true
 end
 
--- Entrar en vehículo
+---Enter vehicle
+---@param vehicle number Vehicle entity
+---@param seat? number|string Seat index or seat name from enums
+---@param timeout? number Timeout in milliseconds (default: -1 for infinite)
+---@return boolean success True if task started successfully
 function lib.task:enterVehicle(vehicle, seat, timeout)
     if not self:isValidPed() then return false end
     if not vehicle or not DoesEntityExist(vehicle) then return false end
@@ -91,7 +121,10 @@ function lib.task:enterVehicle(vehicle, seat, timeout)
     return true
 end
 
--- Salir del vehículo
+---Leave vehicle
+---@param vehicle number Vehicle entity
+---@param flags? number Exit flags (default: 0)
+---@return boolean success True if task started successfully
 function lib.task:leaveVehicle(vehicle, flags)
     if not self:isValidPed() then return false end
     if not vehicle or not DoesEntityExist(vehicle) then return false end
@@ -102,7 +135,11 @@ function lib.task:leaveVehicle(vehicle, flags)
     return true
 end
 
--- Usar objeto más cercano
+---Use nearest scenario to coordinates
+---@param coords vector3 Target coordinates
+---@param distance? number Search distance (default: 3.0)
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@return boolean success True if task started successfully
 function lib.task:useNearestScenarioToCoord(coords, distance, duration)
     if not self:isValidPed() then return false end
 
@@ -113,7 +150,11 @@ function lib.task:useNearestScenarioToCoord(coords, distance, duration)
     return true
 end
 
--- Seguir a otro ped
+---Follow another ped
+---@param targetPed number Target ped entity
+---@param distance? number Follow distance (default: 2.0)
+---@param timeout? number Timeout in milliseconds (default: -1 for infinite)
+---@return boolean success True if task started successfully
 function lib.task:followPed(targetPed, distance, timeout)
     if not self:isValidPed() then return false end
 
@@ -124,7 +165,11 @@ function lib.task:followPed(targetPed, distance, timeout)
     return true
 end
 
--- Apuntar arma
+---Aim gun at coordinates
+---@param coords vector3 Target coordinates
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@param firingPattern? number Firing pattern hash (default: FIRING_PATTERN_FULL_AUTO)
+---@return boolean success True if task started successfully
 function lib.task:aimGunAtCoord(coords, duration, firingPattern)
     if not self:isValidPed() then return false end
 
@@ -135,7 +180,11 @@ function lib.task:aimGunAtCoord(coords, duration, firingPattern)
     return true
 end
 
--- Disparar arma
+---Shoot at coordinates
+---@param coords vector3 Target coordinates
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@param firingPattern? number Firing pattern hash (default: FIRING_PATTERN_FULL_AUTO)
+---@return boolean success True if task started successfully
 function lib.task:shootAtCoord(coords, duration, firingPattern)
     if not self:isValidPed() then return false end
 
@@ -146,7 +195,8 @@ function lib.task:shootAtCoord(coords, duration, firingPattern)
     return true
 end
 
--- Recargar arma
+---Reload weapon
+---@return boolean success True if task started successfully
 function lib.task:reloadWeapon()
     if not self:isValidPed() then return false end
 
@@ -154,7 +204,9 @@ function lib.task:reloadWeapon()
     return true
 end
 
--- Manos arriba
+---Hands up
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@return boolean success True if task started successfully
 function lib.task:handsUp(duration)
     if not self:isValidPed() then return false end
 
@@ -164,7 +216,9 @@ function lib.task:handsUp(duration)
     return true
 end
 
--- Agacharse
+---Duck/crouch
+---@param duration? number Duration in milliseconds (default: -1 for infinite)
+---@return boolean success True if task started successfully
 function lib.task:duck(duration)
     if not self:isValidPed() then return false end
 
@@ -175,14 +229,16 @@ function lib.task:duck(duration)
     return true
 end
 
--- Verificar si está haciendo una tarea
+---Check if task is active
+---@return boolean active True if ped is performing a task
 function lib.task:isActive()
     if not self:isValidPed() then return false end
 
     return GetScriptTaskStatus(self.ped, `SCRIPT_TASK_FOLLOW_NAV_MESH_TO_COORD`) ~= 7
 end
 
--- Obtener el hash de la tarea actual
+---Get current task type hash
+---@return number? taskHash The current task hash or nil if invalid ped
 function lib.task:getCurrentTaskType()
     if not self:isValidPed() then return nil end
 
@@ -190,10 +246,15 @@ function lib.task:getCurrentTaskType()
 end
 
 -- =====================================
--- TAREAS DE VEHÍCULOS AVANZADAS
+-- ADVANCED VEHICLE TASKS
 -- =====================================
 
--- Entrar al vehículo usando enum de asientos
+---Enter vehicle using seat enum
+---@param vehicle number Vehicle entity
+---@param seat string|number Seat name from enums or seat index
+---@param timeout? number Timeout in milliseconds (default: -1 for infinite)
+---@param speed? number Entry speed (default: 1.0)
+---@return boolean success True if task started successfully
 function lib.task:enterVehicleSeat(vehicle, seat, timeout, speed)
     if not self:isValidPed() then return false end
     if not vehicle or not DoesEntityExist(vehicle) then return false end

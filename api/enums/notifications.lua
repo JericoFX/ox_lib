@@ -1,9 +1,17 @@
---[[
-    Notification and UI Enums
-]]
+---@meta
+
+---Notification and UI Enumerations
+---@class NotificationEnums
+---@field TYPES table<string, string> Notification type constants
+---@field POSITIONS table<string, string> Notification position constants
+---@field ICONS table<string, string> FontAwesome icon constants
+---@field COLORS table<string, string> Notification color hex codes
+---@field DURATION table<string, number> Duration presets in milliseconds
+---@field DISPATCH table<string, table> Dispatch alert type configurations
 
 return {
     -- Notification Types
+    ---@enum NotificationTypes
     TYPES = {
         SUCCESS = 'success',
         ERROR = 'error',
@@ -13,6 +21,7 @@ return {
     },
 
     -- Notification Positions
+    ---@enum NotificationPositions
     POSITIONS = {
         TOP_LEFT = 'top-left',
         TOP_CENTER = 'top-center',
@@ -25,6 +34,7 @@ return {
     },
 
     -- Notification Icons (FontAwesome)
+    ---@enum NotificationIcons
     ICONS = {
         SUCCESS = 'fas fa-check',
         ERROR = 'fas fa-times',
@@ -50,6 +60,7 @@ return {
     },
 
     -- Notification Colors
+    ---@enum NotificationColors
     COLORS = {
         SUCCESS = '#4CAF50',
         ERROR = '#F44336',
@@ -64,6 +75,7 @@ return {
     },
 
     -- Duration Presets (milliseconds)
+    ---@enum NotificationDuration
     DURATION = {
         SHORT = 3000,
         MEDIUM = 5000,
@@ -73,6 +85,7 @@ return {
     },
 
     -- Dispatch Alert Types
+    ---@enum DispatchTypes
     DISPATCH = {
         POLICE = {
             code = '10-90',

@@ -12,6 +12,8 @@ local frameworkMappings = {
         ['player:logout'] = 'esx:playerLogout',
         ['player:job:changed'] = 'esx:setJob',
         ['player:money:changed'] = 'esx:setAccountMoney',
+        ['player:money:add'] = 'esx:addMoney',
+        ['player:money:remove'] = 'esx:removeMoney',
         ['vehicle:spawned'] = 'esx:spawnVehicle',
         ['player:arrested'] = 'esx:onPlayerArrested',
         ['player:died'] = 'esx:onPlayerDeath'
@@ -21,6 +23,8 @@ local frameworkMappings = {
         ['player:logout'] = 'QBCore:Client:OnPlayerUnload',
         ['player:job:changed'] = 'QBCore:Client:OnJobUpdate',
         ['player:money:changed'] = 'QBCore:Client:OnMoneyChange',
+        ['player:money:add'] = 'QBCore:Client:OnMoneyChange',
+        ['player:money:remove'] = 'QBCore:Client:OnMoneyChange',
         ['vehicle:spawned'] = 'QBCore:Client:VehicleSpawned',
         ['player:arrested'] = 'police:client:SetInJail',
         ['player:died'] = 'hospital:client:Revive'
@@ -30,6 +34,8 @@ local frameworkMappings = {
         ['player:logout'] = 'ox:playerLogout',
         ['player:job:changed'] = 'ox:setGroup',
         ['player:money:changed'] = 'ox:setMoney',
+        ['player:money:add'] = 'ox:addMoney',
+        ['player:money:remove'] = 'ox:removeMoney',
         ['vehicle:spawned'] = 'ox:vehicleSpawned',
         ['player:arrested'] = 'ox:playerArrested',
         ['player:died'] = 'ox:playerDied'
@@ -73,58 +79,6 @@ local function detectFramework()
     return nil
 end
 
--- Data normalization functions
-local function normalizePlayerData(framework, data)
-    if framework == 'esx' then
-        return {
-            source = data.source,
-            citizenid = data.identifier,
-            charinfo = {
-                firstname = data.firstName or data.get('firstName'),
-                lastname = data.lastName or data.get('lastName'),
-                phone = data.phone or data.get('phoneNumber')
-            },
-            money = {
-                cash = data.getMoney and data.getMoney() or data.money,
-                bank = data.getAccount and data.getAccount('bank').money or 0
-            },
-            job = {
-                name = data.job and data.job.name or 'unemployed',
-                label = data.job and data.job.label or 'Unemployed',
-                grade = data.job and data.job.grade or 0
-            }
-        }
-    elseif framework == 'qbcore' then
-        return {
-            source = data.PlayerData.source,
-            citizenid = data.PlayerData.citizenid,
-            charinfo = data.PlayerData.charinfo,
-            money = data.PlayerData.money,
-            job = data.PlayerData.job
-        }
-    elseif framework == 'ox_core' then
-        return {
-            source = data.source,
-            citizenid = data.charid,
-            charinfo = {
-                firstname = data.get('firstName'),
-                lastname = data.get('lastName'),
-                phone = data.get('phoneNumber')
-            },
-            money = {
-                cash = data.get('money'),
-                bank = data.getAccount('bank')
-            },
-            job = {
-                name = data.getGroup(),
-                label = data.getGroup(),
-                grade = data.getGrade()
-            }
-        }
-    end
-    return data
-end
-
 -- Register event listener
 function events.on(eventName, callback)
     if not registeredEvents[eventName] then
@@ -145,20 +99,33 @@ function events.on(eventName, callback)
             if IsDuplicityVersion() then
                 -- Server-side
                 RegisterServerEvent(frameworkEvent, function(...)
-                    local args = { ... }
-                    local normalizedData = normalizePlayerData(framework, args[1])
-                    events.trigger(eventName, normalizedData, table.unpack(args, 2))
+                    events.trigger(eventName, ...)
                 end)
             else
                 -- Client-side
                 RegisterNetEvent(frameworkEvent, function(...)
-                    local args = { ... }
-                    local normalizedData = normalizePlayerData(framework, args[1])
-                    events.trigger(eventName, normalizedData, table.unpack(args, 2))
+                    events.trigger(eventName, ...)
                 end)
             end
         end
     end
+
+    return true
+end
+
+-- Remove event listener
+function events.off(eventName, callback)
+    local handlers = registeredEvents[eventName]
+    RemoveEventHandler(eventName)
+    if handlers then
+        for i = #handlers, 1, -1 do
+            if handlers[i] == callback then
+                table.remove(handlers, i)
+                return true
+            end
+        end
+    end
+    return false
 end
 
 -- Trigger event
@@ -168,7 +135,9 @@ function events.trigger(eventName, ...)
         for i = 1, #handlers do
             handlers[i](...)
         end
+        return true
     end
+    return false
 end
 
 -- Emit event (cross-resource)
@@ -179,19 +148,6 @@ function events.emit(eventName, ...)
     else
         TriggerEvent(eventName, ...)
         TriggerServerEvent(eventName, ...)
-    end
-end
-
--- Remove event listener
-function events.off(eventName, callback)
-    local handlers = registeredEvents[eventName]
-    if handlers then
-        for i = #handlers, 1, -1 do
-            if handlers[i] == callback then
-                table.remove(handlers, i)
-                break
-            end
-        end
     end
 end
 

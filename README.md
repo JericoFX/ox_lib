@@ -27,6 +27,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.vehicle` - Vehicle manipulation tools
 - `lib.enums` - Shared enumerations and constants
 - `lib.events` - **NEW!** Universal event system with automatic caching
+- `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
 
 ### 🌐 **Framework Wrappers**
 
@@ -42,9 +43,115 @@ This is an **experimental extension** of the original ox_lib that adds:
 - **Normalized data structures** across different frameworks
 - **Universal event system** with automatic framework mapping
 - **Intelligent caching** using ox_lib's native cache system
+- **Advanced NPC system** with AI, memory, and complex behaviors
 - **Singleton pattern** for direct access
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
+
+---
+
+## 🤖 **NEW: Advanced NPC System**
+
+One of the most exciting additions to ox_lib Extended is the **Advanced NPC System** that provides intelligent AI-driven NPCs with complex behaviors, memory systems, and realistic interactions.
+
+### **The Problem It Solves**
+
+```lua
+-- Before: Basic NPCs with static behaviors
+local ped = CreatePed(4, GetHashKey('a_m_y_business_01'), 100, 200, 25, 0.0, false, true)
+TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_CLIPBOARD', 0, true)
+-- Result: Lifeless, predictable NPCs that don't react to the world
+```
+
+### **The Solution**
+
+```lua
+-- After: Intelligent NPCs with advanced AI
+local bankGuard = lib.npc.create({
+    model = 's_m_y_cop_01',
+    coords = vector3(150, -1040, 29.3),
+    behaviors = {'guard', 'patrol'},
+
+    -- Intelligent threat detection
+    guardZone = {
+        center = vector3(150, -1040, 29.3),
+        radius = 20.0
+    },
+
+    -- Automatic scheduling
+    schedule = {
+        [8] = 'patrol',     -- Patrol during day
+        [20] = 'guard'      -- Guard at night
+    },
+
+    -- Combat configuration
+    combat = {
+        ability = 3,
+        weapon = 'WEAPON_PISTOL'
+    }
+})
+```
+
+### **Advanced NPC Features**
+
+- **🧠 AI States** - 7 different AI states (IDLE, PATROLLING, ALERT, FLEEING, etc.)
+- **👁️ Threat Detection** - Automatic assessment of player threats and appropriate responses
+- **🧱 Memory System** - NPCs remember previous interactions and relationships
+- **⏰ Dynamic Scheduling** - Behavior changes based on time of day
+- **😨 Fear System** - Realistic reactions to weapons and aggressive behavior
+- **🚨 Alert Networks** - Guards can communicate and coordinate responses
+- **🎭 Multiple Behaviors** - Patrol, Guard, Civilian, Worker, Vendor behaviors
+- **👔 Appearance Customization** - Complete clothing and prop configuration
+- **💬 Interaction System** - Context-aware dialog and interaction zones
+
+### **Available NPC Behaviors**
+
+- `patrol` - Intelligent patrolling between points with different movement styles
+- `guard` - Area protection with threat assessment and alert levels
+- `civilian` - Realistic civilian behavior with fear reactions and friendly interactions
+- `worker` - Task-based work routines with scheduling and breaks
+- `vendor` - Customer service behavior with greetings and attention
+
+### **Example: Intelligent Bank Guard**
+
+```lua
+local bankGuard = lib.npc.create({
+    model = 's_m_y_cop_01',
+    coords = vector3(150.0, -1040.0, 29.3),
+    behaviors = {'guard', 'patrol'},
+
+    -- Threat detection zone
+    guardZone = {
+        center = vector3(150.0, -1040.0, 29.3),
+        radius = 20.0
+    },
+
+    -- Patrol route
+    patrolPoints = {
+        vector3(145.0, -1035.0, 29.3),
+        vector3(155.0, -1035.0, 29.3),
+        vector3(155.0, -1045.0, 29.3),
+        vector3(145.0, -1045.0, 29.3)
+    },
+
+    -- Combat ready
+    combat = {
+        ability = 3,           -- Professional level
+        weapon = 'WEAPON_PISTOL'
+    },
+
+    -- Alert network for coordination
+    alertNetwork = 'bank_security',
+    warningTime = 2000,        -- 2 second warning before engaging
+
+    -- Work schedule
+    schedule = {
+        [8] = 'patrol',        -- Active patrol during business hours
+        [18] = 'guard',        -- Static guarding after hours
+        [22] = 'patrol'        -- Night patrol
+    }
+})
+```
 
 ---
 

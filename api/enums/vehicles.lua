@@ -1,9 +1,20 @@
---[[
-    Vehicle Related Enums
-]]
+---@meta
+
+---Vehicle Related Enumerations
+---@class VehicleEnums
+---@field DOORS table<string, number> Vehicle door indices
+---@field WINDOWS table<string, number> Vehicle window indices
+---@field LIGHTS table<string, number> Vehicle light types
+---@field CLASSES table<string, number> Vehicle class IDs
+---@field MODS table<string, number> Vehicle modification indices
+---@field COLORS table<string, number> Vehicle color IDs
+---@field DAMAGE table<string, number> Vehicle damage states
+---@field SEATS table<string, number> Vehicle seat indices
+---@field ENGINE table<string, number> Vehicle engine states
 
 return {
     -- Vehicle Doors
+    ---@enum VehicleDoors
     DOORS = {
         FRONT_LEFT = 0,
         FRONT_RIGHT = 1,
@@ -11,10 +22,11 @@ return {
         REAR_RIGHT = 3,
         HOOD = 4,
         TRUNK = 5,
-        TRUNK2 = 6 -- Para algunos vehículos especiales
+        TRUNK2 = 6 -- For some special vehicles
     },
 
     -- Vehicle Windows
+    ---@enum VehicleWindows
     WINDOWS = {
         FRONT_LEFT = 0,
         FRONT_RIGHT = 1,
@@ -25,6 +37,7 @@ return {
     },
 
     -- Vehicle Lights
+    ---@enum VehicleLights
     LIGHTS = {
         HEADLIGHTS = 1,
         INTERIOR = 2,
@@ -34,6 +47,7 @@ return {
     },
 
     -- Vehicle Classes
+    ---@enum VehicleClasses
     CLASSES = {
         COMPACTS = 0,
         SEDANS = 1,
@@ -60,6 +74,7 @@ return {
     },
 
     -- Vehicle Mods
+    ---@enum VehicleMods
     MODS = {
         SPOILERS = 0,
         FRONT_BUMPER = 1,
@@ -108,6 +123,7 @@ return {
     },
 
     -- Vehicle Colors (Primary colors)
+    ---@enum VehicleColors
     COLORS = {
         BLACK = 0,
         CARBON_BLACK = 1,
@@ -134,6 +150,7 @@ return {
     },
 
     -- Vehicle Damage States
+    ---@enum VehicleDamage
     DAMAGE = {
         NONE = 0,
         LIGHT = 1,
@@ -143,6 +160,7 @@ return {
     },
 
     -- Vehicle Seats
+    ---@enum VehicleSeats
     SEATS = {
         DRIVER = -1,
         PASSENGER = 0,
@@ -151,6 +169,7 @@ return {
     },
 
     -- Vehicle Engine States
+    ---@enum VehicleEngine
     ENGINE = {
         OFF = 0,
         ON = 1,

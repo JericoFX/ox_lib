@@ -1,175 +1,270 @@
 --[[
-  Mueve las funciones que se puedan de qb a ox_lib y usa el cache para datos mas normales como el citizenid y esas cosas
+    QB-Core Wrapper - Client Side
+    Handles QB-Core framework integration, data normalization, and universal cache management
 ]]
 if not GetResourceState('qb-core') == 'started' then
     error('QB-Core framework is not started. Please ensure qb-core is running.')
     return
 end
--- Crear clase local, NO asignar a lib.core directamente
-local Core = lib.class('Core')
 
--- Funciones locales privadas (mantener las mismas)
+local Core = lib.class('Core')
 local QBCore = exports['qb-core']:GetCoreObject()
 
-local function normalizePlayerData()
-    -- Try to get from cache first
-    if cache.playerData then
-        return cache.playerData
-    end
-
-    -- Fallback to QBCore API
-    local playerData = QBCore.Functions.GetPlayerData()
+-- Data normalization function
+local function normalizePlayerData(playerData)
     if not playerData then return nil end
 
     local normalized = {
-        -- Identificadores normalizados
+        -- Universal identifiers
         citizenid = playerData.citizenid,
         identifier = playerData.citizenid,
-        name = playerData.charinfo.firstname .. ' ' .. playerData.charinfo.lastname,
+        name = playerData.charinfo and (playerData.charinfo.firstname .. ' ' .. playerData.charinfo.lastname) or 'Unknown',
 
-        -- Job normalizado
+        -- Job data
         job = {
-            name = playerData.job and playerData.job.name,
-            label = playerData.job and playerData.job.label,
-            grade = playerData.job and playerData.job.grade.level,
-            salary = playerData.job and playerData.job.payment,
-            onduty = playerData.job and playerData.job.onduty
+            name = playerData.job and playerData.job.name or 'unemployed',
+            label = playerData.job and playerData.job.label or 'Unemployed',
+            grade = playerData.job and playerData.job.grade and playerData.job.grade.level or 0,
+            salary = playerData.job and playerData.job.payment or 0,
+            onduty = playerData.job and playerData.job.onduty or false
         },
 
-        -- Gang normalizado (específico de QB)
+        -- Gang data
         gang = {
-            name = playerData.gang and playerData.gang.name,
-            label = playerData.gang and playerData.gang.label,
-            grade = playerData.gang and playerData.gang.grade.level
+            name = playerData.gang and playerData.gang.name or 'none',
+            label = playerData.gang and playerData.gang.label or 'None',
+            grade = playerData.gang and playerData.gang.grade and playerData.gang.grade.level or 0
         },
 
-        -- Money normalizado
+        -- Money data
         money = {
             cash = playerData.money and playerData.money.cash or 0,
             bank = playerData.money and playerData.money.bank or 0,
             crypto = playerData.money and playerData.money.crypto or 0
         },
 
-        -- Acceso directo al objeto original
+        -- Character info
+        charinfo = playerData.charinfo or {},
+
+        -- Metadata
+        metadata = playerData.metadata or {},
+
+        -- Original QB-Core object for advanced usage
         _original = playerData
     }
 
-    -- Cache the normalized data if events cache is available
-    if lib.events and lib.events.cache and lib.events.cache.updatePlayer then
-        lib.events.cache.updatePlayer(normalized)
+    return normalized
+end
+
+-- Universal cache management using ox_lib's native cache
+local function updateUniversalCache(key, data)
+    cache:set(key, data)
+end
+
+local function getFromUniversalCache(key)
+    return cache[key]
+end
+
+local function clearUniversalCache()
+    cache:set('playerData', nil)
+    cache:set('citizenid', nil)
+    cache:set('job', nil)
+    cache:set('gang', nil)
+    cache:set('money', nil)
+    cache:set('metadata', nil)
+end
+
+-- Update player cache and emit universal event
+local function updatePlayerCache(playerData)
+    local normalized = normalizePlayerData(playerData)
+    if not normalized then return end
+
+    -- Update universal cache (framework-agnostic)
+    updateUniversalCache('playerData', normalized)
+    updateUniversalCache('citizenid', normalized.citizenid)
+    updateUniversalCache('job', normalized.job)
+    updateUniversalCache('gang', normalized.gang)
+    updateUniversalCache('money', normalized.money)
+    updateUniversalCache('metadata', normalized.metadata)
+
+    -- Emit universal event
+    if lib.events then
+        lib.events.trigger('player:loaded', normalized)
     end
 
     return normalized
 end
 
--- Constructor de la clase
+-- Update job cache and emit universal event
+local function updateJobCache(jobData, oldJob)
+    if not jobData then return end
+
+    updateUniversalCache('job', jobData)
+
+    -- Update player data cache with new job
+    local playerData = getFromUniversalCache('playerData')
+    if playerData then
+        playerData.job = jobData
+        updateUniversalCache('playerData', playerData)
+    end
+
+    -- Emit universal event
+    if lib.events then
+        lib.events.trigger('player:job:changed', playerData, oldJob, jobData)
+    end
+end
+
+-- Update money cache and emit universal event
+local function updateMoneyCache(account, amount, reason)
+    local money = getFromUniversalCache('money') or {}
+    money[account] = amount
+    updateUniversalCache('money', money)
+
+    -- Update player data cache with new money
+    local playerData = getFromUniversalCache('playerData')
+    if playerData then
+        playerData.money = money
+        updateUniversalCache('playerData', playerData)
+    end
+
+    -- Emit universal event
+    if lib.events then
+        lib.events.trigger('player:money:changed', playerData, account, amount, reason)
+    end
+end
+
+-- Constructor
 function Core:constructor()
     self.framework = 'qb-core'
     self.frameworkObject = QBCore
+    self:setupEventListeners()
 end
 
--- Métodos de la clase optimizados con cache directo
+-- Setup QB-Core event listeners
+function Core:setupEventListeners()
+    -- Player loaded event
+    RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+        local playerData = QBCore.Functions.GetPlayerData()
+        updatePlayerCache(playerData)
+    end)
+
+    -- Player logout event
+    RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+        clearUniversalCache()
+    end)
+
+    -- Job update event
+    RegisterNetEvent('QBCore:Client:OnJobUpdate', function(jobInfo)
+        local oldJob = getFromUniversalCache('job')
+        updateJobCache(jobInfo, oldJob)
+    end)
+
+    -- Money change event
+    RegisterNetEvent('QBCore:Client:OnMoneyChange', function(account, amount, reason)
+        updateMoneyCache(account, amount, reason or 'QBCore:Client:OnMoneyChange')
+    end)
+end
+
+-- Core methods using universal cache
 function Core:getPlayerData()
-    -- Try cache first, fallback to API
-    if cache.playerData then
-        return cache.playerData
+    local cachedData = getFromUniversalCache('playerData')
+    if cachedData then
+        return cachedData
     end
 
-    return normalizePlayerData()
+    -- Fallback to QB-Core API
+    local playerData = QBCore.Functions.GetPlayerData()
+    return normalizePlayerData(playerData)
 end
 
 function Core:getJob()
-    -- Try cache first
-    if cache.job then
-        return cache.job.name
+    local job = getFromUniversalCache('job')
+    if job then
+        return job.name
     end
 
-    -- Fallback to full player data
     local playerData = self:getPlayerData()
     return playerData and playerData.job.name
 end
 
 function Core:getJobGrade()
-    -- Try cache first
-    if cache.job then
-        return cache.job.grade
+    local job = getFromUniversalCache('job')
+    if job then
+        return job.grade
     end
 
-    -- Fallback to full player data
     local playerData = self:getPlayerData()
     return playerData and playerData.job.grade
 end
 
 function Core:getJobLabel()
-    -- Try cache first
-    if cache.job then
-        return cache.job.label
+    local job = getFromUniversalCache('job')
+    if job then
+        return job.label
     end
 
-    -- Fallback to full player data
     local playerData = self:getPlayerData()
     return playerData and playerData.job.label
-end
-
-function Core:getGang()
-    -- Try cache first
-    if cache.playerData and cache.playerData.gang then
-        return cache.playerData.gang.name
-    end
-
-    -- Fallback to full player data
-    local playerData = self:getPlayerData()
-    return playerData and playerData.gang.name
-end
-
-function Core:getGangGrade()
-    -- Try cache first
-    if cache.playerData and cache.playerData.gang then
-        return cache.playerData.gang.grade
-    end
-
-    -- Fallback to full player data
-    local playerData = self:getPlayerData()
-    return playerData and playerData.gang.grade
 end
 
 function Core:getMoney(account)
     account = account or 'cash'
 
-    -- Try cache first
-    if cache.money then
-        return cache.money[account] or 0
+    local money = getFromUniversalCache('money')
+    if money then
+        return money[account] or 0
     end
 
-    -- Fallback to full player data
     local playerData = self:getPlayerData()
-    if not playerData then return 0 end
-
-    return playerData.money[account] or 0
+    return playerData and playerData.money[account] or 0
 end
 
 function Core:getIdentifier()
-    -- Try cache first
-    if cache.citizenid then
-        return cache.citizenid
+    local citizenid = getFromUniversalCache('citizenid')
+    if citizenid then
+        return citizenid
     end
 
-    -- Fallback to full player data
     local playerData = self:getPlayerData()
     return playerData and playerData.citizenid
 end
 
 function Core:isPlayerLoaded()
-    -- Try cache first
-    if cache.citizenid then
-        return true
-    end
-
-    -- Fallback to full player data
-    local playerData = self:getPlayerData()
-    return playerData and playerData.citizenid ~= nil
+    return getFromUniversalCache('citizenid') ~= nil
 end
 
+-- Gang methods
+function Core:getGang()
+    local gang = getFromUniversalCache('gang')
+    if gang then
+        return gang.name
+    end
+
+    local playerData = self:getPlayerData()
+    return playerData and playerData.gang and playerData.gang.name or 'none'
+end
+
+function Core:getGangGrade()
+    local gang = getFromUniversalCache('gang')
+    if gang then
+        return gang.grade
+    end
+
+    local playerData = self:getPlayerData()
+    return playerData and playerData.gang and playerData.gang.grade or 0
+end
+
+function Core:getGangLabel()
+    local gang = getFromUniversalCache('gang')
+    if gang then
+        return gang.label
+    end
+
+    local playerData = self:getPlayerData()
+    return playerData and playerData.gang and playerData.gang.label or 'None'
+end
+
+-- Framework-specific methods
 function Core:showNotification(message, type, duration)
     QBCore.Functions.Notify(message, type, duration)
 end
@@ -186,17 +281,24 @@ function Core:progressBar(name, label, duration, useWhileDead, canCancel, disabl
     QBCore.Functions.Progressbar(name, label, duration, useWhileDead, canCancel, disableControls, animation, prop, propTwo, onFinish, onCancel)
 end
 
--- Método adicional para debugging
-function Core:getFramework()
-    return self.framework
+-- Cache management
+function Core:refreshCache()
+    clearUniversalCache()
+    local playerData = QBCore.Functions.GetPlayerData()
+    return updatePlayerCache(playerData)
 end
 
--- Método para invalidar cache manualmente
-function Core:invalidateCache()
-    if lib.events and lib.events.cache and lib.events.cache.clear then
-        lib.events.cache.clear()
-    end
+function Core:clearCache()
+    clearUniversalCache()
 end
 
--- Retornar la clase para que shared.lua la asigne a lib.core
+-- Compatibility methods for ESX
+function Core:getCitizenId()
+    return self:getIdentifier()
+end
+
+function Core:isLoggedIn()
+    return self:isPlayerLoaded()
+end
+
 return Core

@@ -1,5 +1,18 @@
+---@meta
+
+---Job and Career Enumerations
+---@class JobEnums
+---@field NAMES table<string, string> Common job name constants
+---@field CATEGORIES table<string, string[]> Job categories with job lists
+---@field GRADES table<string, number> Common job grade levels
+---@field POLICE_RANKS table<string, number> Police rank hierarchy
+---@field MEDICAL_RANKS table<string, number> Medical rank hierarchy
+---@field COLORS table<string, string> Job color hex codes for UI/blips
+---@field PERMISSIONS table<string, string> Job permission flags
+
 return {
     -- Common Job Names
+    ---@enum JobNames
     NAMES = {
         UNEMPLOYED = 'unemployed',
         POLICE = 'police',
@@ -29,6 +42,7 @@ return {
     },
 
     -- Job Categories
+    ---@enum JobCategories
     CATEGORIES = {
         EMERGENCY = {
             'police',
@@ -72,6 +86,7 @@ return {
     },
 
     -- Job Grades (Common structure)
+    ---@enum JobGrades
     GRADES = {
         TRAINEE = 0,
         OFFICER = 1,
@@ -86,6 +101,7 @@ return {
     },
 
     -- Police Ranks
+    ---@enum PoliceRanks
     POLICE_RANKS = {
         CADET = 0,
         OFFICER = 1,
@@ -100,6 +116,7 @@ return {
     },
 
     -- Medical Ranks
+    ---@enum MedicalRanks
     MEDICAL_RANKS = {
         TRAINEE = 0,
         PARAMEDIC = 1,
@@ -114,6 +131,7 @@ return {
     },
 
     -- Job Colors (for UI/blips)
+    ---@enum JobColors
     COLORS = {
         POLICE = '#3F51B5',
         SHERIFF = '#5D4037',
@@ -129,6 +147,7 @@ return {
     },
 
     -- Job Permissions/Flags
+    ---@enum JobPermissions
     PERMISSIONS = {
         ARREST = 'arrest',
         UNCUFF = 'uncuff',

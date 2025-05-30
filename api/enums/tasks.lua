@@ -1,9 +1,15 @@
---[[
-    Task and Animation Enums
-]]
+---@meta
+
+---Task and Animation Enumerations
+---@class TaskEnums
+---@field TASK_TYPES table<string, number> Task type constants
+---@field TASKS table<string, number> Common task hashes
+---@field ANIM_FLAGS table<string, number> Animation flag constants
+---@field BLEND table<string, number> Animation blend speed constants
 
 return {
     -- Task Types
+    ---@enum TaskTypes
     TASK_TYPES = {
         HANDS_UP = 0,
         PLAY_ANIM = 1,
@@ -14,6 +20,7 @@ return {
     },
 
     -- Common Tasks
+    ---@enum Tasks
     TASKS = {
         HANDS_UP = `HANDS_UP`,
         HANDSUP = `HANDS_UP`,
@@ -32,6 +39,7 @@ return {
     },
 
     -- Animation Flags
+    ---@enum AnimFlags
     ANIM_FLAGS = {
         NORMAL = 0,
         REPEAT = 1,
@@ -43,6 +51,7 @@ return {
     },
 
     -- Animation Blend
+    ---@enum BlendSpeeds
     BLEND = {
         IN_SLOW = 1.0,
         IN_NORMAL = 4.0,

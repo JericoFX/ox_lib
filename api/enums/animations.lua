@@ -1,9 +1,22 @@
---[[
-    Supuestamente se cargan automatico, veremos...
-]]
+---@meta
+
+---Animation data structure
+---@class AnimationData
+---@field dict string Animation dictionary name
+---@field anim string Animation name
+
+---Animation Enumerations
+---@class AnimationEnums
+---@field POLICE table<string, AnimationData> Police/Security animations
+---@field MEDICAL table<string, AnimationData> Medical/EMS animations
+---@field MECHANIC table<string, AnimationData> Mechanic animations
+---@field GENERAL table<string, AnimationData> General action animations
+---@field EMOTES table<string, AnimationData> Emote animations
+---@field CRIMINAL table<string, AnimationData> Criminal activity animations
 
 return {
     -- Police/Security Animations
+    ---@enum PoliceAnimations
     POLICE = {
         ARREST = {
             dict = "mp_arrest_paired",
@@ -24,6 +37,7 @@ return {
     },
 
     -- Medical/EMS Animations
+    ---@enum MedicalAnimations
     MEDICAL = {
         CPR = {
             dict = "mini@cpr@char_a@cpr_str",
@@ -40,6 +54,7 @@ return {
     },
 
     -- Mechanic Animations
+    ---@enum MechanicAnimations
     MECHANIC = {
         REPAIR = {
             dict = "mini@repair",
@@ -56,6 +71,7 @@ return {
     },
 
     -- General Actions
+    ---@enum GeneralAnimations
     GENERAL = {
         DRINKING = {
             dict = "mp_player_intdrink",
@@ -80,6 +96,7 @@ return {
     },
 
     -- Emotes
+    ---@enum EmoteAnimations
     EMOTES = {
         WAVE = {
             dict = "friends@",
@@ -100,6 +117,7 @@ return {
     },
 
     -- Criminal Activities
+    ---@enum CriminalAnimations
     CRIMINAL = {
         LOCKPICK = {
             dict = "anim@amb@clubhouse@tutorial@bkr_tut_ig3@",

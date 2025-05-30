@@ -1,35 +1,49 @@
--- Server-side Events API
+-- Server-side Events API - Pure Events Only
 local events = require 'api.events.init'
 
--- Server-specific event listeners
 lib.events = lib.events or {}
 
--- Register server event
+---Register server event listener
+---@param eventName string The event name to listen for
+---@param callback function The callback function to execute
+---@return boolean success True if event was registered successfully
 function lib.events.on(eventName, callback)
     return events.on(eventName, callback)
 end
 
--- Remove server event listener
+---Remove server event listener
+---@param eventName string The event name to stop listening for
+---@param callback function The callback function to remove
+---@return boolean success True if event was removed successfully
 function lib.events.off(eventName, callback)
     return events.off(eventName, callback)
 end
 
--- Trigger server event
+---Trigger server event
+---@param eventName string The event name to trigger
+---@param ... any Additional arguments to pass to event handlers
+---@return boolean success True if event was triggered successfully
 function lib.events.trigger(eventName, ...)
     return events.trigger(eventName, ...)
 end
 
--- Emit event to specific client
+---Emit event to specific client
+---@param source number The player source to emit to
+---@param eventName string The event name to emit
+---@param ... any Additional arguments to pass to client
 function lib.events.emitClient(source, eventName, ...)
     TriggerClientEvent('lib:events:trigger', source, eventName, ...)
 end
 
--- Emit event to all clients
+---Emit event to all clients
+---@param eventName string The event name to emit to all clients
+---@param ... any Additional arguments to pass to all clients
 function lib.events.emitAllClients(eventName, ...)
     TriggerClientEvent('lib:events:trigger', -1, eventName, ...)
 end
 
--- Get available events for current framework
+---Get available events for current framework
+---@return table events List of available events for the current framework
 function lib.events.getAvailable()
     return events.getAvailableEvents()
 end
@@ -49,50 +63,6 @@ local function registerClientEvent(eventName)
         events.trigger(eventName, source, ...)
     end)
 end
-
--- Initialize common server events
-CreateThread(function()
-    -- Player connection events
-    lib.events.on('player:connected', function(player)
-        lib.print.info('Universal player connected event triggered', player.citizenid)
-        lib.events.emitClient(player.source, 'player:loaded', player)
-    end)
-
-    lib.events.on('player:disconnected', function(player, reason)
-        lib.print.info('Player disconnected', {
-            citizenid = player.citizenid,
-            reason = reason
-        })
-    end)
-
-    -- Money and item events
-    lib.events.on('player:money:add', function(player, account, amount, reason)
-        lib.print.info('Player money added', {
-            citizenid = player.citizenid,
-            account = account,
-            amount = amount,
-            reason = reason
-        })
-    end)
-
-    lib.events.on('player:item:add', function(player, item, count, metadata)
-        lib.print.info('Player item added', {
-            citizenid = player.citizenid,
-            item = item,
-            count = count,
-            metadata = metadata
-        })
-    end)
-
-    lib.events.on('player:item:remove', function(player, item, count, metadata)
-        lib.print.info('Player item removed', {
-            citizenid = player.citizenid,
-            item = item,
-            count = count,
-            metadata = metadata
-        })
-    end)
-end)
 
 -- Auto-register common client events
 local commonClientEvents = {
