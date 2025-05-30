@@ -16,3 +16,11 @@ documentation/NPC_SYSTEM.md
 ARCHITECTURE.md
 documentation/SYSTEMS_OVERVIEW.md
 imports/npc/examples.lua
+api/database/server.lua
+documentation/AUDIO_API.md
+documentation/CAMERA_API.md
+documentation/DAMAGE_API.md
+documentation/STATEBAGS_API.md
+documentation/WEAPONS_API.md
+documentation/README.md
+documentation/README.md

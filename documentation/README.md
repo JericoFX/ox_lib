@@ -1,8 +1,19 @@
+---@meta
+
 # 📚 ox_lib Extended - Documentación Completa
 
 Esta carpeta contiene la documentación completa de todos los sistemas avanzados agregados a ox_lib Extended.
 
 ## 📋 Índice de Documentación
+
+### 🎵 **APIs Core Avanzadas**
+
+- [**Sistema de Audio Avanzado**](./AUDIO_API.md) - Audio 3D, efectos de fade, pooling y gestión avanzada de sonidos
+- [**Sistema de Cámaras Completo**](./CAMERA_API.md) - Cámaras cinemáticas, freecam, transiciones suaves y scripted cameras
+- [**Sistema de StateBags Reactivo**](./STATEBAGS_API.md) - Estados reactivos con watchers automáticos y sincronización
+- [**Sistema de Armas Completo**](./WEAPONS_API.md) - Gestión completa de armas, attachments y modificaciones
+- [**Sistema de Daño Simple**](./DAMAGE_API.md) - Wrapper simple alrededor de eventos de daño de bajo nivel
+- [**Sistema de Base de Datos**](./DATABASE_API.md) - Wrapper avanzado para oxmysql con query builder y transacciones
 
 ### 🤖 **Sistemas de IA y NPCs**
 
@@ -37,8 +48,13 @@ Esta carpeta contiene la documentación completa de todos los sistemas avanzados
 
 ### ✅ **Completado**
 
+- **Sistema de Audio Avanzado** - API completa con pooling, 3D audio y efectos
+- **Sistema de Cámaras Completo** - Freecam, transiciones, scripted cameras
+- **Sistema de StateBags Reactivo** - Estados reactivos con watchers automáticos
+- **Sistema de Armas Completo** - Gestión completa de armas y attachments
+- **Sistema de Daño Simple** - Wrapper básico para eventos de daño
+- **Sistema de Base de Datos** - Query builder y transacciones para oxmysql
 - **Sistema Avanzado de NPCs** - Documentación completa con ejemplos
-- Sistema Universal de Eventos (implementado, documentación pendiente)
 
 ### 🔄 **En Desarrollo**
 
@@ -57,8 +73,8 @@ Esta carpeta contiene la documentación completa de todos los sistemas avanzados
 
 ## 📖 Cómo Usar Esta Documentación
 
-1. **Explora los sistemas** usando el índice de arriba
-2. **Lee la documentación completa** de cada sistema que te interese
+1. **Explora las APIs Core** para funcionalidades básicas avanzadas
+2. **Revisa los sistemas especializados** según tus necesidades
 3. **Sigue los ejemplos prácticos** incluidos en cada guía
 4. **Implementa gradualmente** los sistemas en tu proyecto
 5. **Consulta la API Reference** para detalles técnicos específicos
@@ -67,9 +83,9 @@ Esta carpeta contiene la documentación completa de todos los sistemas avanzados
 
 ## ⚠️ Nota Importante
 
-**Esta documentación está en desarrollo activo.** Los sistemas documentados aquí son experimentales y están diseñados para entornos de desarrollo y testing únicamente.
+**Esta documentación cubre APIs experimentales y avanzadas.** Los sistemas documentados aquí están diseñados para entornos de desarrollo y testing únicamente.
 
-**NO uses estos sistemas en producción** hasta que sean marcados como estables.
+**Revisa cada API individualmente** antes de usar en producción.
 
 ---
 
