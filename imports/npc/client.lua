@@ -27,6 +27,7 @@ function lib.npc:constructor(config)
     if not config.model or not config.coords then
         print('[NPC] Error: Model and coords are required')
         error('[NPC] Error: Model and coords are required')
+        return
     end
 
     -- Initialize instance properties using private fields
@@ -54,6 +55,7 @@ function lib.npc:constructor(config)
     -- Create the actual ped entity
     if not self:_createPed() then
         error('[NPC] Failed to create ped entity')
+        return
     end
 
     -- Generate unique ID and register
@@ -262,10 +264,6 @@ function lib.npc:assessThreatLevel(targetPed)
         end
     end
 
-    -- Wanted level (if applicable)
-    local wantedLevel = GetPlayerWantedLevel(NetworkGetPlayerIndexFromPed(targetPed))
-    threatLevel = threatLevel + wantedLevel
-
     return threatLevel
 end
 
@@ -288,7 +286,7 @@ function lib.npc:handleThreat(threat)
         TaskTurnPedToFaceEntity(self.private.ped, threat.ped, 3000)
 
         if self.private.config.canSpeak then
-            -- Could trigger warning voice lines here
+            -- Could trigger warning voice lines here, dont know how to do it
         end
     end
 end
@@ -721,14 +719,13 @@ end
 
 -- Global update loop for all active NPCs
 CreateThread(function()
-    while true do
+    while next(lib.npc.activeNPCs) do
         for npcId, npcInstance in pairs(lib.npc.activeNPCs) do
             if DoesEntityExist(npcInstance.private.ped) then
                 npcInstance:updateAI()
                 npcInstance:updateSchedule()
                 npcInstance:updateRelationships()
             else
-                -- Clean up deleted NPCs
                 lib.npc.cleanup(npcId)
             end
         end
@@ -736,62 +733,4 @@ CreateThread(function()
     end
 end)
 
--- Legacy compatibility functions for backwards compatibility
-local legacyAPI = {}
-
-function legacyAPI.create(config)
-    local npcInstance = lib.npc:new(config)
-    return npcInstance and npcInstance:getId() or false
-end
-
-function legacyAPI.registerBehavior(name, behaviorFunc)
-    return lib.npc.registerBehavior(name, behaviorFunc)
-end
-
-function legacyAPI.remove(npcId)
-    return lib.npc.remove(npcId)
-end
-
-function legacyAPI.getInfo(npcId)
-    local npcInstance = lib.npc.getById(npcId)
-    return npcInstance and npcInstance:getInfo() or nil
-end
-
-function legacyAPI.getAll()
-    local result = {}
-    for npcId, npcInstance in pairs(lib.npc.getAll()) do
-        result[npcId] = npcInstance:getInfo()
-    end
-    return result
-end
-
-function legacyAPI.getAllByBehavior(behaviorName)
-    local result = {}
-    for npcId, npcInstance in pairs(lib.npc.getAllByBehavior(behaviorName)) do
-        result[npcId] = npcInstance:getInfo()
-    end
-    return result
-end
-
-function legacyAPI.changeBehavior(npcId, behaviorName)
-    local npcInstance = lib.npc.getById(npcId)
-    return npcInstance and npcInstance:changeBehavior(behaviorName) or false
-end
-
--- Export both the class and legacy compatibility
-return {
-    -- Export the class directly
-    NPC = lib.npc,
-
-    -- Legacy API for backwards compatibility
-    npc = legacyAPI,
-
-    -- Direct legacy exports
-    create = legacyAPI.create,
-    registerBehavior = legacyAPI.registerBehavior,
-    remove = legacyAPI.remove,
-    getInfo = legacyAPI.getInfo,
-    getAll = legacyAPI.getAll,
-    getAllByBehavior = legacyAPI.getAllByBehavior,
-    changeBehavior = legacyAPI.changeBehavior
-}
+return lib.npc
