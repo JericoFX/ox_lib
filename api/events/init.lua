@@ -4,6 +4,7 @@
 local events = {}
 local registeredEvents = {}
 local eventMappings = {}
+local frameworkHandlers = {} -- Track framework event handlers for cleanup
 
 -- Event mappings for different frameworks
 local frameworkMappings = {
@@ -86,8 +87,6 @@ function events.on(eventName, callback)
     end
 
     table.insert(registeredEvents[eventName], callback)
-
-    -- Auto-register framework-specific events
     local framework = detectFramework()
     if framework then
         local mappings = IsDuplicityVersion() and serverMappings[framework] or frameworkMappings[framework]
@@ -96,17 +95,18 @@ function events.on(eventName, callback)
         if frameworkEvent and not eventMappings[frameworkEvent] then
             eventMappings[frameworkEvent] = eventName
 
+            local handler
             if IsDuplicityVersion() then
-                -- Server-side
-                RegisterServerEvent(frameworkEvent, function(...)
+                handler = RegisterServerEvent(frameworkEvent, function(...)
                     events.trigger(eventName, ...)
                 end)
             else
-                -- Client-side
-                RegisterNetEvent(frameworkEvent, function(...)
+                handler = RegisterNetEvent(frameworkEvent, function(...)
                     events.trigger(eventName, ...)
                 end)
             end
+            
+            frameworkHandlers[frameworkEvent] = handler
         end
     end
 
@@ -116,11 +116,26 @@ end
 -- Remove event listener
 function events.off(eventName, callback)
     local handlers = registeredEvents[eventName]
-    RemoveEventHandler(eventName)
     if handlers then
         for i = #handlers, 1, -1 do
             if handlers[i] == callback then
                 table.remove(handlers, i)
+                
+                -- Limpiamos los handlers de los frameworks o lo que se use para que no ocupen espacio
+                if #handlers == 0 then
+                    local framework = detectFramework()
+                    if framework then
+                        local mappings = IsDuplicityVersion() and serverMappings[framework] or frameworkMappings[framework]
+                        local frameworkEvent = mappings and mappings[eventName]
+                        
+                        if frameworkEvent and frameworkHandlers[frameworkEvent] then
+                            RemoveEventHandler(frameworkHandlers[frameworkEvent])
+                            frameworkHandlers[frameworkEvent] = nil
+                            eventMappings[frameworkEvent] = nil
+                        end
+                    end
+                end
+                
                 return true
             end
         end

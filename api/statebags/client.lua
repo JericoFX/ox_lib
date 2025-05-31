@@ -171,7 +171,7 @@ end
 ---@param key string State key to watch
 ---@param callback fun(playerId: number, key: string, value: any, oldValue: any): void Callback function
 ---@return number watcherId Unique watcher ID for removal
-function StateBags:watchPlayerState(playerId, key, callback)
+function StateBags:watchPlayerState( key, callback)
     self.private.watcherIdCounter = self.private.watcherIdCounter + 1
     local watcherId = self.private.watcherIdCounter
 
@@ -180,7 +180,7 @@ function StateBags:watchPlayerState(playerId, key, callback)
         key = key,
         callback = callback,
         type = 'player',
-        playerId = playerId,
+        playerId = cache.serverId,
         active = true,
         instance = self
     }
@@ -188,19 +188,19 @@ function StateBags:watchPlayerState(playerId, key, callback)
     self.private.watchers[watcherId] = watcher
 
     -- Setup AddStateBagChangeHandler for specific player
-    local handler = AddStateBagChangeHandler(key, ('player:%d'):format(playerId), function(bagName, key, value, reserved, replicated)
+    local handler = AddStateBagChangeHandler(key, ('player:%d'):format(cache.serverId), function(bagName, key, value, reserved, replicated)
         if watcher.active then
-            local oldValue = self.private.lastPlayerValues and self.private.lastPlayerValues[playerId] and self.private.lastPlayerValues[playerId][key]
-            callback(playerId, key, value, oldValue)
+            local oldValue = self.private.lastPlayerValues and self.private.lastPlayerValues[cache.serverId] and self.private.lastPlayerValues[cache.serverId][key]
+            callback(cache.serverId, key, value, oldValue)
 
             -- Store last value
             if not self.private.lastPlayerValues then
                 self.private.lastPlayerValues = {}
             end
-            if not self.private.lastPlayerValues[playerId] then
-                self.private.lastPlayerValues[playerId] = {}
+            if not self.private.lastPlayerValues[cache.serverId] then
+                self.private.lastPlayerValues[cache.serverId] = {}
             end
-            self.private.lastPlayerValues[playerId][key] = value
+            self.private.lastPlayerValues[cache.serverId][key] = value
         end
     end)
 

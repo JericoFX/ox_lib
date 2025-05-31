@@ -25,13 +25,66 @@ local Vehicle = {}
 ---@return lib.vehicle
 function lib.vehicle:constructor(vehicle)
     -- Si se pasa vehicle, es para ese vehículo específico
-    -- Si no se pasa, obtiene el vehículo actual del jugador
+    -- Si no se pasa, obtiene el vehículo actual del jugador con el cache
     if vehicle then
-        self.vehicle = vehicle
+        if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+            self.vehicle = vehicle
+        else
+            self.vehicle = nil
+        end
     else
-        local ped = PlayerPedId()
-        self.vehicle = IsPedInAnyVehicle(ped, false) and GetVehiclePedIsIn(ped, false) or nil
+        -- Usar el vehículo actual del jugador desde cache
+        self.vehicle = cache.vehicle or nil
     end
+end
+
+-- =====================================
+-- VALIDATION FUNCTIONS
+-- =====================================
+
+---Check if the vehicle instance is valid
+---@return boolean valid True if vehicle exists and is valid
+function lib.vehicle:isValid()
+    return self.vehicle and self.vehicle ~= 0 and DoesEntityExist(self.vehicle) and IsEntityAVehicle(self.vehicle)
+end
+
+---Get the vehicle entity ID
+---@return number? vehicle The vehicle entity or nil if invalid
+function lib.vehicle:getEntity()
+    if self:isValid() then
+        return self.vehicle
+    end
+    return nil
+end
+
+---Set a new vehicle entity for this instance
+---@param vehicle number The new vehicle entity
+---@return boolean success True if the vehicle was set successfully
+function lib.vehicle:setVehicle(vehicle)
+    if vehicle and DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+        self.vehicle = vehicle
+        return true
+    end
+    return false
+end
+
+---Static function to create an instance from any vehicle entity
+---@param vehicle number Vehicle entity
+---@return lib.vehicle? instance Vehicle instance or nil if invalid
+function lib.vehicle.fromEntity(vehicle)
+    if vehicle and DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+        return lib.vehicle:new(vehicle)
+    end
+    return nil
+end
+
+---Static function to get player's current vehicle as instance
+---@return lib.vehicle? instance Vehicle instance or nil if player not in vehicle
+function lib.vehicle.getCurrent()
+    if cache.vehicle then
+        return lib.vehicle:new(cache.vehicle)
+    end
+    return nil
 end
 
 -- =====================================
@@ -76,63 +129,58 @@ function lib.vehicle.create(model, coords, heading, callback, options)
     end
 
     -- Cargar el modelo con callback
-    lib.requestModel(modelHash, function(success)
-        if not success then
-            if callback then callback(false, 'Could not load model: ' .. tostring(model)) end
-            return
-        end
+    lib.requestModel(modelHash)
 
-        -- Crear el vehículo
-        local vehicle = CreateVehicle(modelHash, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading, true, false)
+    -- Crear el vehículo
+    local vehicle = CreateVehicle(modelHash, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading, true, false)
 
-        if not vehicle or vehicle == 0 then
-            SetModelAsNoLongerNeeded(modelHash)
-            if callback then callback(false, 'Could not create vehicle') end
-            return
-        end
+    if not vehicle or vehicle == 0 then
+        SetModelAsNoLongerNeeded(modelHash)
+        if callback then callback(false, 'Could not create vehicle') end
+        return
+    end
 
-        -- Aplicar opciones adicionales si se proporcionan
-        if options.plate then
-            SetVehicleNumberPlateText(vehicle, options.plate)
-        end
+    -- Aplicar opciones adicionales si se proporcionan
+    if options.plate then
+        SetVehicleNumberPlateText(vehicle, options.plate)
+    end
 
-        if options.color then
-            if type(options.color) == 'table' then
-                if options.color.primary and options.color.secondary then
-                    SetVehicleColours(vehicle, options.color.primary, options.color.secondary)
-                elseif options.color[1] and options.color[2] then
-                    SetVehicleColours(vehicle, options.color[1], options.color[2])
-                end
+    if options.color then
+        if type(options.color) == 'table' then
+            if options.color.primary and options.color.secondary then
+                SetVehicleColours(vehicle, options.color.primary, options.color.secondary)
+            elseif options.color[1] and options.color[2] then
+                SetVehicleColours(vehicle, options.color[1], options.color[2])
             end
         end
+    end
+    -- Me gustaria que se cargue el wrapper de fuel directo y listo pero ta...
+    if options.fuel ~= nil then
+        SetVehicleFuelLevel(vehicle, options.fuel)
+    end
 
-        if options.fuel ~= nil then
-            SetVehicleFuelLevel(vehicle, options.fuel)
-        end
+    if options.engineHealth then
+        SetVehicleEngineHealth(vehicle, options.engineHealth)
+    end
 
-        if options.engineHealth then
-            SetVehicleEngineHealth(vehicle, options.engineHealth)
-        end
+    if options.locked ~= nil then
+        SetVehicleDoorsLocked(vehicle, options.locked and 2 or 1)
+    end
 
-        if options.locked ~= nil then
-            SetVehicleDoorsLocked(vehicle, options.locked and 2 or 1)
-        end
+    if options.engineOn ~= nil then
+        SetVehicleEngineOn(vehicle, options.engineOn, true, true)
+    end
 
-        if options.engineOn ~= nil then
-            SetVehicleEngineOn(vehicle, options.engineOn, true, true)
-        end
+    -- Crear instancia de la clase vehicle
+    local vehicleInstance = lib.vehicle:new(vehicle)
 
-        -- Crear instancia de la clase vehicle
-        local vehicleInstance = lib.vehicle:new(vehicle)
+    -- Limpiar modelo
+    SetModelAsNoLongerNeeded(modelHash)
 
-        -- Limpiar modelo
-        SetModelAsNoLongerNeeded(modelHash)
-
-        -- Ejecutar callback con éxito
-        if callback then
-            callback(true, 'Vehicle created successfully', vehicleInstance, vehicle)
-        end
-    end)
+    -- Ejecutar callback con éxito
+    if callback then
+        callback(true, 'Vehicle created successfully', vehicleInstance, vehicle)
+    end
 
     return true
 end
@@ -154,7 +202,7 @@ function lib.vehicle.createAndEnter(model, coords, heading, seatName, callback, 
         end
 
         -- Obtener el ped del jugador
-        local playerPed = PlayerPedId()
+        local playerPed = cache.ped
 
         -- Obtener el índice del asiento
         local seatIndex = lib.enums.vehicles.SEATS[seatName]
@@ -240,11 +288,6 @@ end
 -- =====================================
 -- CLIENT FUNCTIONS
 -- =====================================
-
--- Verificar si el vehículo es válido
-function lib.vehicle:isValid()
-    return self.vehicle and self.vehicle ~= 0 and DoesEntityExist(self.vehicle)
-end
 
 -- Obtener modelo del vehículo
 function lib.vehicle:getModel()

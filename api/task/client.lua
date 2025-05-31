@@ -438,7 +438,7 @@ function lib.task:greetNearestPlayer()
     if not self:isValidPed() then return false end
 
     local coords = GetEntityCoords(self.ped)
-    local playerId, playerPed = lib.getClosestPlayer(coords, 5.0, false)
+    local _, playerPed = lib.getClosestPlayer(coords, 5.0, false)
 
     if playerPed then
         TaskTurnPedToFaceEntity(self.ped, playerPed, -1)
@@ -457,7 +457,7 @@ function lib.task:fleeFromNearestPlayer(distance, duration)
     if not self:isValidPed() then return false end
 
     local coords = GetEntityCoords(self.ped)
-    local playerId, playerPed = lib.getClosestPlayer(coords, 20.0, false)
+    local _, playerPed = lib.getClosestPlayer(coords, 20.0, false)
 
     if playerPed then
         distance = distance or 100.0
@@ -682,14 +682,12 @@ end
 -- Función auxiliar para normalizar el índice de asiento
 function lib.task:_normalizeSeatIndex(seat)
     if type(seat) == 'string' then
-        -- Si es string, buscar en el enum
+        -- Si es string, buscar en el enum que es medio al pedo tener un enum con strings
         local seatIndex = lib.enums.vehicles.SEATS[seat]
         return seatIndex -- Puede ser nil si no existe
     elseif type(seat) == 'number' then
-        -- Si es número, usar directamente
         return seat
     else
-        -- Valor por defecto: conductor
         return -1
     end
 end

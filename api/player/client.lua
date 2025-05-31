@@ -68,7 +68,7 @@ end
 ---@return number? vehicle The vehicle entity or nil if not in vehicle
 function lib.player:getCurrentVehicle()
     local ped = self:getPed()
-    if ped and ped ~= 0 and IsPedInAnyVehicle(ped, false) then
+    if ped and ped ~= 0 and self:isInVehicle() then
         return cache.vehicle
     end
     return nil
@@ -79,8 +79,8 @@ end
 function lib.player:isDriving()
     local ped = self:getPed()
     if ped and ped ~= 0 then
-        local vehicle = GetVehiclePedIsIn(ped, false)
-        if vehicle ~= 0 then
+        local vehicle = self:isInVehicle()
+        if vehicle then
             return cache.seat == lib.enums.vehicles.SEATS.DRIVER
         end
     end
@@ -181,7 +181,7 @@ function lib.player:isOnline()
 end
 
 ---Get distance between players
----@param otherPlayer lib.player|vector3 Other player instance or coordinates
+---@param otherPlayer lib.player|vector3|number Other player instance, coordinates, or player ID
 ---@return number? distance The distance in units or nil if invalid
 function lib.player:getDistanceFrom(otherPlayer)
     local myPos = self:getPosition()
@@ -191,14 +191,13 @@ function lib.player:getDistanceFrom(otherPlayer)
         otherPos = otherPlayer:getPosition()
     elseif type(otherPlayer) == 'vector3' then
         otherPos = otherPlayer
+        return #(myPos - otherPos)
+    elseif type(otherPlayer) == 'number' then
+        otherPos = GetEntityCoords(otherPlayer)
+        return #(myPos - otherPos)
     else
         return nil
     end
-
-    if myPos and otherPos then
-        return #(myPos - otherPos)
-    end
-    return nil
 end
 
 return lib.player

@@ -133,9 +133,9 @@ end
 ---Set entity health
 ---@param entity number Entity handle
 ---@param health number New health value
-function Damage:setEntityHealth(entity, health)
-    SetEntityHealth(entity, health)
-end
+-- function Damage:setEntityHealth(entity, health)
+--     SetEntityHealth(entity, health)
+-- end
 
 ---Check if entity is dead
 ---@param entity number Entity handle
@@ -190,8 +190,7 @@ function Damage:_processDamageEvent(damageInfo)
     for _, handler in pairs(self.private.damageHandlers) do
         if handler.active then
             local result = handler.callback(damageInfo)
-
-         
+            return result
         end
     end
 end

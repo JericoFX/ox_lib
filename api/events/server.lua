@@ -39,7 +39,8 @@ end
 ---@param eventName string The event name to emit to all clients
 ---@param ... any Additional arguments to pass to all clients
 function lib.events.emitAllClients(eventName, ...)
-    TriggerClientEvent('lib:events:trigger', -1, eventName, ...)
+  --  TriggerClientEvent('lib:events:trigger', -1, eventName, ...)
+    lib.triggerClientEvent(eventName, -1, ...)
 end
 
 ---Get available events for current framework
@@ -51,14 +52,13 @@ end
 -- Register client event handlers
 RegisterServerEvent('lib:events:emitAll')
 AddEventHandler('lib:events:emitAll', function(eventName, ...)
-    local source = source
+    local source <const> = source
     lib.events.emitAllClients(eventName, ...)
 end)
 
 -- Handle client-to-server events
 local function registerClientEvent(eventName)
-    RegisterServerEvent('lib:events:' .. eventName)
-    AddEventHandler('lib:events:' .. eventName, function(...)
+    RegisterServerEvent('lib:events:' .. eventName, function(...)
         local source = source
         events.trigger(eventName, source, ...)
     end)
