@@ -2,8 +2,8 @@
     QB-Core Wrapper - Client Side
     Handles QB-Core framework integration, data normalization, and universal cache management
 ]]
-if not GetResourceState('qb-core') == 'started' then
-    error('QB-Core framework is not started. Please ensure qb-core is running.')
+if GetResourceState('qb-core') ~= 'started' then
+    -- No need for error if is not finded
     return
 end
 

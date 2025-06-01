@@ -2,7 +2,6 @@
     ESX Core Wrapper - Client Side
     Handles ESX framework integration, data normalization, and universal cache management
 ]]
-print(debug.traceback("ESX Core Wrapper - Client Side",1))
 if  GetResourceState('es_extended') ~= 'started' then
     return
 end
