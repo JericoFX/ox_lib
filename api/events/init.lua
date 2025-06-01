@@ -8,7 +8,7 @@ local frameworkHandlers = {} -- Track framework event handlers for cleanup
 
 -- Event mappings for different frameworks
 local frameworkMappings = {
-    ['esx'] = {
+    ['es_extended'] = {
         ['player:loaded'] = 'esx:playerLoaded',
         ['player:logout'] = 'esx:playerLogout',
         ['player:job:changed'] = 'esx:setJob',
@@ -45,7 +45,7 @@ local frameworkMappings = {
 
 -- Server-side event mappings
 local serverMappings = {
-    ['esx'] = {
+    ['es_extended'] = {
         ['player:connected'] = 'esx:playerLoaded',
         ['player:disconnected'] = 'esx:playerDropped',
         ['player:money:add'] = 'esx:addInventoryItem',
@@ -71,7 +71,7 @@ local serverMappings = {
 -- Detect framework
 local function detectFramework()
     if GetResourceState('es_extended') == 'started' then
-        return 'esx'
+        return 'es_extended'
     elseif GetResourceState('qb-core') == 'started' then
         return 'qbcore'
     elseif GetResourceState('ox_core') == 'started' then
@@ -82,12 +82,14 @@ end
 
 -- Register event listener
 function events.on(eventName, callback)
+
     if not registeredEvents[eventName] then
         registeredEvents[eventName] = {}
     end
 
     table.insert(registeredEvents[eventName], callback)
     local framework = detectFramework()
+
     if framework then
         local mappings = IsDuplicityVersion() and serverMappings[framework] or frameworkMappings[framework]
         local frameworkEvent = mappings and mappings[eventName]

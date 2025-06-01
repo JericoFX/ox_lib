@@ -4,7 +4,6 @@
 return {
     -- Core Frameworks
     core = {
-        ['esx_extended'] = 'esx_extended',
         ['es_extended'] = 'esx_extended',
         ['qb-core'] = 'qb-core',
         ['qbx_core'] = 'qb-core',

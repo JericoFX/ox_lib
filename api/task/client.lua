@@ -1,8 +1,7 @@
----@meta
 
 ---@class lib.task
 ---@field ped number The ped entity this task system controls
-local Task = {}
+lib.task = lib.class("task")
 
 ---Task API Class - Client Only
 ---Task management system for client-side only

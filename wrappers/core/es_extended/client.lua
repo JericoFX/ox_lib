@@ -2,8 +2,8 @@
     ESX Core Wrapper - Client Side
     Handles ESX framework integration, data normalization, and universal cache management
 ]]
-if not GetResourceState('es_extended') == 'started' then
-    error('ESX framework is not started. Please ensure es_extended is running.')
+print(debug.traceback("ESX Core Wrapper - Client Side",1))
+if  GetResourceState('es_extended') ~= 'started' then
     return
 end
 

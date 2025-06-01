@@ -29,8 +29,8 @@ files {
     'api/**/shared.lua',
     'api/**/client.lua',
     -- Wrapper Files
-    'wrappers/**/shared.lua',
-    'wrappers/**/client.lua',
+    'wrappers/**/**/shared.lua',
+    'wrappers/**/**/client.lua',
     -- Web Files
     'web/build/index.html',
     'web/build/**/*',
@@ -44,7 +44,7 @@ shared_scripts {
     'api/enums/*.lua',
     'api/**/shared.lua',
     -- Wrapper Shared Files
-    'wrappers/**/shared.lua',
+    'wrappers/**/**/shared.lua',
     -- 'resource/**/shared/*.lua'
 }
 
@@ -65,5 +65,5 @@ server_scripts {
     -- API Server Files
     'api/**/**/server.lua',
     -- Wrapper Server Files
-    'wrappers/**/server.lua'
+    'wrappers/**/**/server.lua'
 }
