@@ -24,8 +24,6 @@ local Vehicle = {}
 ---@param vehicle? number If passed, it's for that specific vehicle. If not passed, gets player's current vehicle
 ---@return lib.vehicle
 function lib.vehicle:constructor(vehicle)
-    -- Si se pasa vehicle, es para ese vehículo específico
-    -- Si no se pasa, obtiene el vehículo actual del jugador con el cache
     if vehicle then
         if DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
             self.vehicle = vehicle
@@ -33,7 +31,6 @@ function lib.vehicle:constructor(vehicle)
             self.vehicle = nil
         end
     else
-        -- Usar el vehículo actual del jugador desde cache
         self.vehicle = cache.vehicle or nil
     end
 end
@@ -101,7 +98,6 @@ end
 function lib.vehicle.create(model, coords, heading, callback, options)
     options = options or {}
 
-    -- Validar parámetros
     if type(model) ~= 'string' and type(model) ~= 'number' then
         if callback then callback(false, 'Invalid vehicle model') end
         return false
@@ -114,13 +110,11 @@ function lib.vehicle.create(model, coords, heading, callback, options)
 
     heading = heading or 0.0
 
-    -- Convertir coordenadas si es necesario
     local vehicleCoords = coords
     if type(coords) == 'table' then
         vehicleCoords = vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
     end
 
-    -- Asegurarse de que el modelo esté cargado
     local modelHash = type(model) == 'string' and joaat(model) or model
 
     if not IsModelInCdimage(modelHash) or not IsModelAVehicle(modelHash) then
@@ -128,19 +122,20 @@ function lib.vehicle.create(model, coords, heading, callback, options)
         return false
     end
 
-    -- Cargar el modelo con callback
-    lib.requestModel(modelHash)
+    local success, loadedModel = pcall(lib.requestModel, modelHash)
+    if not success or not loadedModel then
+        if callback then callback(false, 'Could not load vehicle model: ' .. tostring(model)) end
+        return false
+    end
 
-    -- Crear el vehículo
     local vehicle = CreateVehicle(modelHash, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading, true, false)
 
     if not vehicle or vehicle == 0 then
         SetModelAsNoLongerNeeded(modelHash)
         if callback then callback(false, 'Could not create vehicle') end
-        return
+        return false
     end
 
-    -- Aplicar opciones adicionales si se proporcionan
     if options.plate then
         SetVehicleNumberPlateText(vehicle, options.plate)
     end
@@ -154,12 +149,12 @@ function lib.vehicle.create(model, coords, heading, callback, options)
             end
         end
     end
-    -- Me gustaria que se cargue el wrapper de fuel directo y listo pero ta...
-    if options.fuel ~= nil then
+
+    if options.fuel and options.fuel >= 0 and options.fuel <= 100 then
         SetVehicleFuelLevel(vehicle, options.fuel)
     end
 
-    if options.engineHealth then
+    if options.engineHealth and options.engineHealth >= 0 and options.engineHealth <= 1000 then
         SetVehicleEngineHealth(vehicle, options.engineHealth)
     end
 
@@ -171,13 +166,10 @@ function lib.vehicle.create(model, coords, heading, callback, options)
         SetVehicleEngineOn(vehicle, options.engineOn, true, true)
     end
 
-    -- Crear instancia de la clase vehicle
     local vehicleInstance = lib.vehicle:new(vehicle)
 
-    -- Limpiar modelo
     SetModelAsNoLongerNeeded(modelHash)
 
-    -- Ejecutar callback con éxito
     if callback then
         callback(true, 'Vehicle created successfully', vehicleInstance, vehicle)
     end
@@ -289,117 +281,101 @@ end
 -- CLIENT FUNCTIONS
 -- =====================================
 
--- Obtener modelo del vehículo
 function lib.vehicle:getModel()
     if not self:isValid() then return nil end
     return GetEntityModel(self.vehicle)
 end
 
--- Obtener nombre del modelo
 function lib.vehicle:getModelName()
     if not self:isValid() then return nil end
     return GetDisplayNameFromVehicleModel(self:getModel())
 end
 
--- Obtener coordenadas del vehículo
 function lib.vehicle:getCoords()
     if not self:isValid() then return nil end
     return GetEntityCoords(self.vehicle)
 end
 
--- Obtener rotación del vehículo
 function lib.vehicle:getRotation()
     if not self:isValid() then return nil end
     return GetEntityRotation(self.vehicle)
 end
 
--- Obtener heading del vehículo
 function lib.vehicle:getHeading()
     if not self:isValid() then return 0.0 end
     return GetEntityHeading(self.vehicle)
 end
 
--- Obtener velocidad del vehículo
 function lib.vehicle:getSpeed()
     if not self:isValid() then return 0.0 end
     return GetEntitySpeed(self.vehicle)
 end
 
--- Obtener velocidad en MPH
 function lib.vehicle:getSpeedMph()
     return self:getSpeed() * 2.236936
 end
 
--- Obtener velocidad en KMH
 function lib.vehicle:getSpeedKmh()
     return self:getSpeed() * 3.6
 end
 
--- Obtener salud del vehículo
 function lib.vehicle:getHealth()
     if not self:isValid() then return 0 end
     return GetVehicleEngineHealth(self.vehicle)
 end
 
--- Establecer salud del vehículo
 function lib.vehicle:setHealth(health)
     if not self:isValid() then return false end
+    if health < 0 or health > 1000 then return false end
     SetVehicleEngineHealth(self.vehicle, health)
     return true
 end
 
--- Obtener salud del motor
 function lib.vehicle:getEngineHealth()
     if not self:isValid() then return 0 end
     return GetVehicleEngineHealth(self.vehicle)
 end
 
--- Establecer salud del motor
 function lib.vehicle:setEngineHealth(health)
     if not self:isValid() then return false end
+    if health < 0 or health > 1000 then return false end
     SetVehicleEngineHealth(self.vehicle, health)
     return true
 end
 
--- Obtener salud del tanque de gasolina
 function lib.vehicle:getPetrolTankHealth()
     if not self:isValid() then return 0 end
     return GetVehiclePetrolTankHealth(self.vehicle)
 end
 
--- Establecer salud del tanque
 function lib.vehicle:setPetrolTankHealth(health)
     if not self:isValid() then return false end
+    if health < 0 or health > 1000 then return false end
     SetVehiclePetrolTankHealth(self.vehicle, health)
     return true
 end
 
--- Verificar si el motor está encendido
 function lib.vehicle:isEngineOn()
     if not self:isValid() then return false end
     return GetIsVehicleEngineRunning(self.vehicle)
 end
 
--- Encender/apagar motor
 function lib.vehicle:setEngineOn(state, instantly)
     if not self:isValid() then return false end
     SetVehicleEngineOn(self.vehicle, state, instantly or false, true)
     return true
 end
 
--- Obtener el conductor
 function lib.vehicle:getDriver()
     if not self:isValid() then return nil end
     return GetPedInVehicleSeat(self.vehicle, lib.enums.vehicles.SEATS.DRIVER)
 end
 
--- Obtener pasajero en asiento específico (usa enum para nombres de asientos)
 function lib.vehicle:getPassenger(seatIndex)
     if not self:isValid() then return nil end
     return GetPedInVehicleSeat(self.vehicle, seatIndex)
 end
 
--- Obtener pasajero por nombre de asiento
 function lib.vehicle:getPassengerByName(seatName)
     if not self:isValid() then return nil end
     local seatIndex = lib.enums.vehicles.SEATS[seatName]
@@ -409,13 +385,11 @@ function lib.vehicle:getPassengerByName(seatName)
     return nil
 end
 
--- Obtener todos los ocupantes con nombres de asientos
 function lib.vehicle:getOccupants()
     if not self:isValid() then return {} end
 
     local occupants = {}
 
-    -- Usar enums para mapear asientos
     for seatName, seatIndex in pairs(lib.enums.vehicles.SEATS) do
         local ped = GetPedInVehicleSeat(self.vehicle, seatIndex)
         if ped and ped ~= 0 then
@@ -426,11 +400,10 @@ function lib.vehicle:getOccupants()
     return occupants
 end
 
--- Verificar si hay espacio libre
 function lib.vehicle:hasFreeSeat()
     if not self:isValid() then return false end
 
-    local maxSeats = GetVehicleMaxNumberOfPassengers(self.vehicle) + 1 -- +1 para conductor
+    local maxSeats = GetVehicleMaxNumberOfPassengers(self.vehicle) + 1
     local occupants = self:getOccupants()
 
     local occupiedSeats = 0
@@ -441,16 +414,13 @@ function lib.vehicle:hasFreeSeat()
     return occupiedSeats < maxSeats
 end
 
--- Obtener el asiento libre más cercano usando enums
 function lib.vehicle:getFreeSeat()
     if not self:isValid() then return nil end
 
-    -- Verificar conductor primero
     if not self:getDriver() or self:getDriver() == 0 then
         return 'DRIVER', lib.enums.vehicles.SEATS.DRIVER
     end
 
-    -- Verificar asientos de pasajeros en orden de prioridad
     local seatPriority = { 'PASSENGER', 'REAR_LEFT', 'REAR_RIGHT' }
 
     for _, seatName in ipairs(seatPriority) do
@@ -466,13 +436,11 @@ function lib.vehicle:getFreeSeat()
     return nil, nil
 end
 
--- Verificar si el vehículo está dañado
 function lib.vehicle:isDamaged()
     if not self:isValid() then return true end
     return GetVehicleEngineHealth(self.vehicle) < 1000.0
 end
 
--- Reparar vehículo completamente
 function lib.vehicle:repair()
     if not self:isValid() then return false end
 
@@ -484,123 +452,151 @@ function lib.vehicle:repair()
     return true
 end
 
--- Obtener nivel de combustible
 function lib.vehicle:getFuelLevel()
     if not self:isValid() then return 0.0 end
     return GetVehicleFuelLevel(self.vehicle)
 end
 
--- Establecer nivel de combustible
 function lib.vehicle:setFuelLevel(level)
     if not self:isValid() then return false end
+    if level < 0 or level > 100.0 then return false end
     SetVehicleFuelLevel(self.vehicle, level)
     return true
 end
 
--- Verificar si está bloqueado
 function lib.vehicle:isLocked()
     if not self:isValid() then return false end
     return GetVehicleDoorLockStatus(self.vehicle) ~= 0
 end
 
--- Bloquear/desbloquear
 function lib.vehicle:setLocked(state)
     if not self:isValid() then return false end
     SetVehicleDoorsLocked(self.vehicle, state and 2 or 1)
     return true
 end
 
--- Abrir puerta usando enum
-function lib.vehicle:openDoor(doorName, loose, instantly) -- chequea si pasa string o numero, si numero usa directamente el numero
+function lib.vehicle:openDoor(door, loose, instantly)
     if not self:isValid() then return false end
-    local doorIndex = lib.enums.vehicles.DOORS[doorName]
-    if doorIndex then
-        SetVehicleDoorOpen(self.vehicle, doorIndex, loose or false, instantly or false)
-        return true
+    
+    local doorIndex = door
+    if type(door) == 'string' then
+        doorIndex = lib.enums.vehicles.DOORS[door]
+        if not doorIndex then return false end
+    elseif type(door) ~= 'number' then
+        return false
     end
-    return false
+    
+    SetVehicleDoorOpen(self.vehicle, doorIndex, loose or false, instantly or false)
+    return true
 end
 
--- Cerrar puerta usando enum
-function lib.vehicle:closeDoor(doorName, instantly) --mismo aca
+function lib.vehicle:closeDoor(door, instantly)
     if not self:isValid() then return false end
-    local doorIndex = lib.enums.vehicles.DOORS[doorName]
-    if doorIndex then
-        SetVehicleDoorShut(self.vehicle, doorIndex, instantly or false)
-        return true
+    
+    local doorIndex = door
+    if type(door) == 'string' then
+        doorIndex = lib.enums.vehicles.DOORS[door]
+        if not doorIndex then return false end
+    elseif type(door) ~= 'number' then
+        return false
     end
-    return false
+    
+    SetVehicleDoorShut(self.vehicle, doorIndex, instantly or false)
+    return true
 end
 
--- Verificar si la puerta está dañada usando enum
-function lib.vehicle:isDoorDamaged(doorName)
+function lib.vehicle:isDoorDamaged(door)
     if not self:isValid() then return false end
-    local doorIndex = lib.enums.vehicles.DOORS[doorName]
-    if doorIndex then
-        return IsVehicleDoorDamaged(self.vehicle, doorIndex)
+    
+    local doorIndex = door
+    if type(door) == 'string' then
+        doorIndex = lib.enums.vehicles.DOORS[door]
+        if not doorIndex then return false end
+    elseif type(door) ~= 'number' then
+        return false
     end
-    return false
+    
+    return IsVehicleDoorDamaged(self.vehicle, doorIndex)
 end
 
--- Romper puerta usando enum
-function lib.vehicle:breakDoor(doorName, deleteDoor)
+function lib.vehicle:breakDoor(door, deleteDoor)
     if not self:isValid() then return false end
-    local doorIndex = lib.enums.vehicles.DOORS[doorName]
-    if doorIndex then
-        SetVehicleDoorBroken(self.vehicle, doorIndex, deleteDoor or false)
-        return true
+    
+    local doorIndex = door
+    if type(door) == 'string' then
+        doorIndex = lib.enums.vehicles.DOORS[door]
+        if not doorIndex then return false end
+    elseif type(door) ~= 'number' then
+        return false
     end
-    return false
+    
+    SetVehicleDoorBroken(self.vehicle, doorIndex, deleteDoor or false)
+    return true
 end
 
--- Subir/bajar ventana usando enum
-function lib.vehicle:rollDownWindow(windowName)
+function lib.vehicle:rollDownWindow(window)
     if not self:isValid() then return false end
-    local windowIndex = lib.enums.vehicles.WINDOWS[windowName]
-    if windowIndex then
-        RollDownWindow(self.vehicle, windowIndex)
-        return true
+    
+    local windowIndex = window
+    if type(window) == 'string' then
+        windowIndex = lib.enums.vehicles.WINDOWS[window]
+        if not windowIndex then return false end
+    elseif type(window) ~= 'number' then
+        return false
     end
-    return false
+    
+    RollDownWindow(self.vehicle, windowIndex)
+    return true
 end
 
-function lib.vehicle:rollUpWindow(windowName)
+function lib.vehicle:rollUpWindow(window)
     if not self:isValid() then return false end
-    local windowIndex = lib.enums.vehicles.WINDOWS[windowName]
-    if windowIndex then
-        RollUpWindow(self.vehicle, windowIndex)
-        return true
+    
+    local windowIndex = window
+    if type(window) == 'string' then
+        windowIndex = lib.enums.vehicles.WINDOWS[window]
+        if not windowIndex then return false end
+    elseif type(window) ~= 'number' then
+        return false
     end
-    return false
+    
+    RollUpWindow(self.vehicle, windowIndex)
+    return true
 end
 
--- Verificar si la ventana está intacta usando enum
-function lib.vehicle:isWindowIntact(windowName)
+function lib.vehicle:isWindowIntact(window)
     if not self:isValid() then return false end
-    local windowIndex = lib.enums.vehicles.WINDOWS[windowName]
-    if windowIndex then
-        return IsVehicleWindowIntact(self.vehicle, windowIndex)
+    
+    local windowIndex = window
+    if type(window) == 'string' then
+        windowIndex = lib.enums.vehicles.WINDOWS[window]
+        if not windowIndex then return false end
+    elseif type(window) ~= 'number' then
+        return false
     end
-    return false
+    
+    return IsVehicleWindowIntact(self.vehicle, windowIndex)
 end
 
--- Romper ventana usando enum
-function lib.vehicle:smashWindow(windowName)
+function lib.vehicle:smashWindow(window)
     if not self:isValid() then return false end
-    local windowIndex = lib.enums.vehicles.WINDOWS[windowName]
-    if windowIndex then
-        SmashVehicleWindow(self.vehicle, windowIndex)
-        return true
+    
+    local windowIndex = window
+    if type(window) == 'string' then
+        windowIndex = lib.enums.vehicles.WINDOWS[window]
+        if not windowIndex then return false end
+    elseif type(window) ~= 'number' then
+        return false
     end
-    return false
+    
+    SmashVehicleWindow(self.vehicle, windowIndex)
+    return true
 end
 
--- Obtener clase del vehículo usando enum
 function lib.vehicle:getClass()
     if not self:isValid() then return nil end
     local classId = GetVehicleClass(self.vehicle)
 
-    -- Buscar el nombre de la clase en los enums
     for className, enumClassId in pairs(lib.enums.vehicles.CLASSES) do
         if enumClassId == classId then
             return className, classId
@@ -610,13 +606,11 @@ function lib.vehicle:getClass()
     return nil, classId
 end
 
--- Verificar si es de una clase específica
 function lib.vehicle:isClass(className)
     local currentClass = self:getClass()
     return currentClass == className
 end
 
--- Obtener modificación usando enum
 function lib.vehicle:getMod(modName)
     if not self:isValid() then return nil end
     local modIndex = lib.enums.vehicles.MODS[modName]
@@ -626,7 +620,6 @@ function lib.vehicle:getMod(modName)
     return nil
 end
 
--- Establecer modificación usando enum
 function lib.vehicle:setMod(modName, modValue)
     if not self:isValid() then return false end
     local modIndex = lib.enums.vehicles.MODS[modName]
@@ -637,12 +630,10 @@ function lib.vehicle:setMod(modName, modValue)
     return false
 end
 
--- Obtener color usando enum (para nombres comunes)
 function lib.vehicle:getColorName()
     if not self:isValid() then return nil end
     local primaryColor, secondaryColor = GetVehicleColours(self.vehicle)
 
-    -- Buscar el nombre del color en los enums
     for colorName, colorId in pairs(lib.enums.vehicles.COLORS) do
         if colorId == primaryColor then
             return colorName, primaryColor, secondaryColor
@@ -652,7 +643,6 @@ function lib.vehicle:getColorName()
     return nil, primaryColor, secondaryColor
 end
 
--- Establecer color usando enum
 function lib.vehicle:setColor(primaryColorName, secondaryColorName)
     if not self:isValid() then return false end
 
@@ -666,11 +656,29 @@ function lib.vehicle:setColor(primaryColorName, secondaryColorName)
     return false
 end
 
+---Get complete vehicle properties using ox_lib system
+---@return table? properties Complete vehicle properties table
+function lib.vehicle:getProperties()
+    if not self:isValid() then return nil end
+    return lib.getVehicleProperties(self.vehicle)
+end
+
+---Set complete vehicle properties using ox_lib system
+---@param properties table Vehicle properties table
+---@param fixVehicle? boolean Fix vehicle after setting properties
+---@return boolean success True if properties were set successfully
+function lib.vehicle:setProperties(properties, fixVehicle)
+    if not self:isValid() then return false end
+    if type(properties) ~= 'table' then return false end
+    
+    local success, result = pcall(lib.setVehicleProperties, self.vehicle, properties, fixVehicle)
+    return success
+end
+
 -- =====================================
 -- DELETION FUNCTIONS
 -- =====================================
 
--- Eliminar este vehículo con callback
 function lib.vehicle:delete(callback)
     if not self:isValid() then
         if callback then callback(false, 'Invalid vehicle') end
@@ -679,10 +687,8 @@ function lib.vehicle:delete(callback)
 
     local vehicleEntity = self.vehicle
 
-    -- Eliminar el vehículo
     DeleteVehicle(vehicleEntity)
 
-    -- Verificar si se eliminó correctamente
     local success = not DoesEntityExist(vehicleEntity)
 
     if success then
@@ -695,17 +701,14 @@ function lib.vehicle:delete(callback)
     return success
 end
 
--- Función estática para eliminar un vehículo por entity con callback
 function lib.vehicle.deleteEntity(vehicleEntity, callback)
     if not vehicleEntity or vehicleEntity == 0 or not DoesEntityExist(vehicleEntity) then
         if callback then callback(false, 'Invalid vehicle entity') end
         return false
     end
 
-    -- Eliminar el vehículo
     DeleteVehicle(vehicleEntity)
 
-    -- Verificar si se eliminó correctamente
     local success = not DoesEntityExist(vehicleEntity)
 
     if success then
@@ -717,7 +720,6 @@ function lib.vehicle.deleteEntity(vehicleEntity, callback)
     return success
 end
 
--- Función estática para eliminar múltiples vehículos con callback
 function lib.vehicle.deleteMultiple(vehicles, callback)
     if type(vehicles) ~= 'table' then
         if callback then callback(false, 'Invalid vehicle list') end
@@ -733,11 +735,9 @@ function lib.vehicle.deleteMultiple(vehicles, callback)
         return true
     end
 
-    -- Eliminar cada vehículo
     for i, vehicle in ipairs(vehicles) do
         local vehicleEntity = vehicle
 
-        -- Si es una instancia de lib.vehicle, obtener la entidad
         if type(vehicle) == 'table' and vehicle.vehicle then
             vehicleEntity = vehicle.vehicle
         end
@@ -775,7 +775,6 @@ function lib.vehicle.deleteMultiple(vehicles, callback)
     return not hasError
 end
 
--- Función estática para eliminar vehículos en un área con callback
 function lib.vehicle.deleteInArea(coords, radius, callback, filterFunction)
     if type(coords) ~= 'vector3' and type(coords) ~= 'table' then
         if callback then callback(false, 'Invalid coordinates') end
@@ -784,17 +783,14 @@ function lib.vehicle.deleteInArea(coords, radius, callback, filterFunction)
 
     radius = radius or 10.0
 
-    -- Convertir coordenadas si es necesario
     local areaCoords = coords
     if type(coords) == 'table' then
         areaCoords = vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
     end
 
-    -- Obtener vehículos cercanos
     local nearbyVehicles = lib.getNearbyVehicles(areaCoords, radius, true)
     local vehiclesToDelete = {}
 
-    -- Filtrar vehículos si se proporciona una función de filtro
     for _, vehicleData in ipairs(nearbyVehicles) do
         local shouldDelete = true
 
@@ -807,7 +803,6 @@ function lib.vehicle.deleteInArea(coords, radius, callback, filterFunction)
         end
     end
 
-    -- Eliminar los vehículos filtrados
     lib.vehicle.deleteMultiple(vehiclesToDelete, function(success, message, results)
         if callback then
             callback(success, message, results, #vehiclesToDelete)

@@ -1,6 +1,28 @@
 -- Advanced NPC System for ox_lib using lib.class()
 -- Object-oriented NPC system with intelligent behavior, scheduling, interactions, and AI routines
 
+---@class lib.npc
+---@field private table Private fields container
+---@field aiState string Current AI state
+---@field currentBehavior string? Current behavior name
+---@field schedule table Schedule configuration
+---@field patrolIndex number Current patrol point index
+---@field alertLevel number Alert level (0-5)
+---@field fearLevel number Fear level (0-5)
+---@field relationships table Relationship data
+---@field memory table Memory system data
+---@field lastUpdate number Last update timestamp
+---@field lastInteraction number Last interaction timestamp
+---@field customData table Custom data storage
+---@field hasInteracted boolean Has interacted flag
+---@field hasGreetedCustomer boolean Has greeted customer flag
+---@field customerTimeout number Customer timeout timestamp
+---@field currentTaskIndex number Current task index
+---@field isPlayerNearby boolean Player nearby flag
+---@field cachedCoords vector3? Cached coordinates
+---@field cachedTime number? Cached timestamp
+---@field playerInGuardZone boolean Player in guard zone flag
+
 -- Create the NPC class using ox_lib's class system
 lib.npc = lib.class('NPC')
 
@@ -24,16 +46,27 @@ lib.npc.AI_STATES = {
 
 -- Constructor using ox_lib class system
 function lib.npc:constructor(config)
+    if #lib.npc.activeNPCs >= lib.npc.CONFIG.MAX_ACTIVE_NPCS then
+        return error('[NPC] Maximum NPC limit reached: ' .. lib.npc.CONFIG.MAX_ACTIVE_NPCS)
+    end
+    
+    if type(config) ~= 'table' then
+        return error('[NPC] Config must be a table')
+    end
+    
     if not config.model or not config.coords then
-        print('[NPC] Error: Model and coords are required')
-        error('[NPC] Error: Model and coords are required')
-        return
+        return error('[NPC] Model and coords are required')
     end
 
     -- Initialize instance properties using private fields
     self.private.config = config
     self.private.ped = nil
     self.private.id = nil
+    self.private.updatePoint = nil
+    self.private.interactionZone = nil
+    self.private.guardZone = nil
+    self.private.patrolPoints = nil
+    self.private.updateInterval = nil
 
     -- Public properties
     self.aiState = lib.npc.AI_STATES.IDLE
@@ -51,6 +84,10 @@ function lib.npc:constructor(config)
     self.hasGreetedCustomer = false
     self.customerTimeout = 0
     self.currentTaskIndex = 1
+    self.isPlayerNearby = false
+    self.cachedCoords = nil
+    self.cachedTime = nil
+    self.playerInGuardZone = false
 
     -- Create the actual ped entity
     if not self:_createPed() then
@@ -64,6 +101,7 @@ function lib.npc:constructor(config)
 
     -- Setup advanced features
     self:_setupAdvancedFeatures()
+    self:_setupUpdatePoint()
 
     print('[NPC] Created advanced NPC with ID: ' .. self.private.id)
 end
@@ -90,15 +128,7 @@ function lib.npc:_createPed()
     -- Load model
     local modelHash = GetHashKey(config.model)
     if not HasModelLoaded(modelHash) then
-        RequestModel(modelHash)
-        local timeout = 0
-        while not HasModelLoaded(modelHash) and timeout < 5000 do
-            Wait(100)
-            timeout = timeout + 100
-        end
-
-        if not HasModelLoaded(modelHash) then
-            print('[NPC] Error: Failed to load model ' .. config.model)
+        if not lib.requestModel(modelHash, 5000) then
             return false
         end
     end
@@ -154,6 +184,10 @@ function lib.npc:_setupAdvancedFeatures()
         self:setupRelationships(config.relationships)
     end
 
+    if config.guardZone then
+        self:_setupGuardZone()
+    end
+
     -- Set initial behavior
     if config.behaviors and #config.behaviors > 0 then
         self:changeBehavior(config.behaviors[1])
@@ -200,7 +234,7 @@ end
 -- Instance method to detect threats
 function lib.npc:detectThreats()
     local threats = {}
-    local coords = GetEntityCoords(self.private.ped)
+    local coords = self.cachedCoords or GetEntityCoords(self.private.ped)
     local guardZone = self.private.config.guardZone
 
     if not guardZone then return threats end
@@ -245,7 +279,7 @@ function lib.npc:assessThreatLevel(targetPed)
     -- Running towards NPC
     if IsPedRunning(targetPed) then
         local targetCoords = GetEntityCoords(targetPed)
-        local npcCoords = GetEntityCoords(self.private.ped)
+        local npcCoords = self.cachedCoords or GetEntityCoords(self.private.ped)
         local velocity = GetEntityVelocity(targetPed)
 
         -- Check if running towards NPC
@@ -301,7 +335,9 @@ function lib.npc:showFearReaction()
         TaskSmartFleePed(self.private.ped, PlayerPedId(), 100.0, -1, false, false)
     else
         -- Low fear - show nervous behavior
-        TaskPlayAnim(self.private.ped, 'amb@world_human_stand_impatient@male@no_props@base', 'base', 8.0, -8.0, -1, 1, 0, false, false, false)
+        if lib.requestAnimDict('amb@world_human_stand_impatient@male@no_props@base') then
+            TaskPlayAnim(self.private.ped, 'amb@world_human_stand_impatient@male@no_props@base', 'base', 8.0, -8.0, -1, 1, 0, false, false, false)
+        end
     end
 end
 
@@ -310,7 +346,9 @@ function lib.npc:friendlyInteraction()
     if not self.hasInteracted then
         TaskTurnPedToFaceEntity(self.private.ped, PlayerPedId(), -1)
 
-        TaskPlayAnim(self.private.ped, 'gestures@m@standing@casual', 'gesture_hello', 8.0, -8.0, 2000, 48, 0, false, false, false)
+        if lib.requestAnimDict('gestures@m@standing@casual') then
+            TaskPlayAnim(self.private.ped, 'gestures@m@standing@casual', 'gesture_hello', 8.0, -8.0, 2000, 48, 0, false, false, false)
+        end
 
         self.hasInteracted = true
         self.lastInteraction = GetGameTimer()
@@ -339,7 +377,7 @@ end
 function lib.npc:performGuardDuties()
     if math.random() < 0.1 then
         -- Look around alertly
-        local coords = GetEntityCoords(self.private.ped)
+        local coords = self.cachedCoords or GetEntityCoords(self.private.ped)
         local lookDirection = math.random(0, 360)
         TaskTurnPedToFaceCoord(self.private.ped,
             coords.x + math.cos(math.rad(lookDirection)),
@@ -350,14 +388,31 @@ end
 
 -- Instance method to update memory
 function lib.npc:updateMemory()
-    local coords = GetEntityCoords(self.private.ped)
-    local currentTime = GetGameTimer()
-
+    local currentTime = self.cachedTime or GetGameTimer()
+    local coords = self.cachedCoords or GetEntityCoords(self.private.ped)
+    
     -- Remember recent player interactions
     local nearbyPlayers = self:findNearbyPlayers(10.0)
 
     for _, playerId in ipairs(nearbyPlayers) do
         if not self.memory[playerId] then
+            local memoryCount = 0
+            for _ in pairs(self.memory) do memoryCount = memoryCount + 1 end
+            
+            if memoryCount >= lib.npc.CONFIG.MAX_MEMORY_ENTRIES then
+                local oldestTime = currentTime
+                local oldestPlayer = nil
+                for pid, data in pairs(self.memory) do
+                    if data.lastSeen < oldestTime then
+                        oldestTime = data.lastSeen
+                        oldestPlayer = pid
+                    end
+                end
+                if oldestPlayer then
+                    self.memory[oldestPlayer] = nil
+                end
+            end
+            
             self.memory[playerId] = {
                 firstSeen = currentTime,
                 lastSeen = currentTime,
@@ -371,7 +426,7 @@ function lib.npc:updateMemory()
 
     -- Clean old memories (older than 1 hour)
     for playerId, memoryData in pairs(self.memory) do
-        if currentTime - memoryData.lastSeen > 3600000 then
+        if currentTime - memoryData.lastSeen > lib.npc.CONFIG.MEMORY_CLEANUP_INTERVAL then
             self.memory[playerId] = nil
         end
     end
@@ -380,7 +435,7 @@ end
 -- Instance method to find nearby players
 function lib.npc:findNearbyPlayers(radius)
     local players = {}
-    local coords = GetEntityCoords(self.private.ped)
+    local coords = self.cachedCoords or GetEntityCoords(self.private.ped)
 
     for _, playerId in ipairs(GetActivePlayers()) do
         local playerCoords = GetEntityCoords(GetPlayerPed(playerId))
@@ -409,11 +464,28 @@ end
 
 -- Instance method to change behavior
 function lib.npc:changeBehavior(behaviorName)
-    ClearPedTasks(self.private.ped)
-    self.currentBehavior = behaviorName
-    self.aiState = lib.npc.AI_STATES.IDLE
-
-    print('[NPC] Changed behavior for NPC ' .. self.private.id .. ' to: ' .. behaviorName)
+    if type(behaviorName) ~= 'string' then
+        return false, 'Behavior name must be a string'
+    end
+    
+    if not lib.npc.behaviors[behaviorName] then
+        return false, 'Behavior not found: ' .. behaviorName
+    end
+    
+    if not DoesEntityExist(self.private.ped) then
+        return false, 'NPC entity no longer exists'
+    end
+    
+    local success = pcall(function()
+        ClearPedTasks(self.private.ped)
+        self.currentBehavior = behaviorName
+        self.aiState = lib.npc.AI_STATES.IDLE
+    end)
+    
+    if not success then
+        return false, 'Failed to change behavior'
+    end
+    
     return true
 end
 
@@ -421,21 +493,29 @@ end
 function lib.npc:setupInteractions(interactionConfig)
     lib.npc.globalInteractions[self.private.id] = interactionConfig
 
-    -- Create interaction zone
-    local coords = GetEntityCoords(self.private.ped)
-    lib.zones.box({
-        coords = coords,
-        size = vector3(2, 2, 2),
-        options = {
-            {
-                name = 'interact_npc_' .. self.private.id,
-                label = interactionConfig.label or 'Hablar',
-                icon = interactionConfig.icon or 'fa-solid fa-comments',
-                onSelect = function()
-                    self:startInteraction()
-                end
-            }
-        }
+    self.private.interactionZone = lib.zones.box({
+        coords = GetEntityCoords(self.private.ped),
+        size = vector3(
+            interactionConfig.size and interactionConfig.size.x or 2.0,
+            interactionConfig.size and interactionConfig.size.y or 2.0,
+            interactionConfig.size and interactionConfig.size.z or 2.0
+        ),
+        rotation = interactionConfig.rotation or 0.0,
+        debug = interactionConfig.debug or false,
+        
+        onEnter = function(self)
+            if interactionConfig.onEnter then
+                interactionConfig.onEnter(self)
+            end
+        end,
+        
+        onExit = function(self)
+            if interactionConfig.onExit then
+                interactionConfig.onExit(self)
+            end
+        end,
+        
+        options = self:_buildInteractionOptions(interactionConfig)
     })
 end
 
@@ -452,18 +532,37 @@ function lib.npc:setupRelationships(relationshipConfig)
 end
 
 -- Instance method to start interaction
-function lib.npc:startInteraction()
+function lib.npc:startInteraction(interactionType)
     local interactionConfig = lib.npc.globalInteractions[self.private.id]
     if not interactionConfig then return end
 
-    -- Implementation for starting interaction
-    print('[NPC] Starting interaction with NPC ' .. self.private.id)
+
+        self:friendlyInteraction()
+
 end
 
 -- Instance method to alert network
 function lib.npc:alertNetwork(threat)
-    -- Implementation for alerting other NPCs in network
-    print('[NPC] Alerting network about threat for NPC ' .. self.private.id)
+    if not self.private.config.alertNetwork then return end
+    
+    local alertRadius = self.private.config.alertRadius or 100.0
+    local coords = self.cachedCoords or GetEntityCoords(self.private.ped)
+    
+    for npcId, npcInstance in pairs(lib.npc.activeNPCs) do
+        if npcId ~= self.private.id then
+            local otherCoords = GetEntityCoords(npcInstance.private.ped)
+            local distance = #(coords - otherCoords)
+            
+            if distance <= alertRadius then
+                npcInstance.alertLevel = math.min(5, npcInstance.alertLevel + 2)
+                npcInstance.aiState = lib.npc.AI_STATES.ALERT
+                
+                if npcInstance.currentBehavior == 'guard' then
+                    TaskTurnPedToFaceEntity(npcInstance.private.ped, threat.ped, 3000)
+                end
+            end
+        end
+    end
 end
 
 -- Instance method to cleanup
@@ -477,6 +576,33 @@ function lib.npc:cleanup()
     lib.npc.globalInteractions[self.private.id] = nil
     lib.npc.globalSchedules[self.private.id] = nil
     lib.npc.globalRelationships[self.private.id] = nil
+
+    if self.private.updatePoint then
+        self.private.updatePoint:remove()
+        self.private.updatePoint = nil
+    end
+    
+    if self.private.interactionZone then
+        self.private.interactionZone:remove()
+        self.private.interactionZone = nil
+    end
+    
+    if self.private.guardZone then
+        self.private.guardZone:remove()
+        self.private.guardZone = nil
+    end
+    
+    if self.private.patrolPoints then
+        for _, point in ipairs(self.private.patrolPoints) do
+            point:remove()
+        end
+        self.private.patrolPoints = nil
+    end
+    
+    if self.private.updateInterval then
+        ClearInterval(self.private.updateInterval)
+        self.private.updateInterval = nil
+    end
 end
 
 -- Instance method to destroy/remove
@@ -514,6 +640,23 @@ lib.npc.behaviors.patrol = function(npcInstance)
     local points = npcInstance.private.config.patrolPoints or {}
 
     if #points < 2 then return end
+
+    if not npcInstance.private.patrolPoints then
+        npcInstance.private.patrolPoints = {}
+        
+        for i, point in ipairs(points) do
+            npcInstance.private.patrolPoints[i] = lib.points.new({
+                coords = vector3(point.x, point.y, point.z),
+                distance = 2.0,
+                
+                onEnter = function()
+                    if npcInstance.patrolIndex == i then
+                        npcInstance:reachPatrolPoint(i)
+                    end
+                end
+            })
+        end
+    end
 
     local targetPoint = points[npcInstance.patrolIndex or 1]
     local coords = GetEntityCoords(ped)
@@ -664,7 +807,9 @@ lib.npc.behaviors.vendor = function(npcInstance)
 
         if not npcInstance.hasGreetedCustomer then
             -- Greet customer
-            TaskPlayAnim(ped, 'gestures@m@standing@casual', 'gesture_hello', 8.0, -8.0, 2000, 48, 0, false, false, false)
+            if lib.requestAnimDict('gestures@m@standing@casual') then
+                TaskPlayAnim(ped, 'gestures@m@standing@casual', 'gesture_hello', 8.0, -8.0, 2000, 48, 0, false, false, false)
+            end
             npcInstance.hasGreetedCustomer = true
             npcInstance.customerTimeout = GetGameTimer() + 30000
         end
