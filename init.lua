@@ -84,14 +84,15 @@ local function loadModule(self, module)
         end
 
         local result = fn()
-        return result
+        self[module] = result or noop
+        return self[module]
     end
- 
+
     -- Si no se encontró en api/, intentar cargar desde wrappers/
     local wrapperPath = ('wrappers/%s/%s.lua'):format(module, context)
     chunk = LoadResourceFile(ox_lib, wrapperPath)
     local sharedWrapper = LoadResourceFile(ox_lib, ('wrappers/%s/shared.lua'):format(module))
- 
+
     if sharedWrapper then
         chunk = (chunk and ('%s\n%s'):format(sharedWrapper, chunk)) or sharedWrapper
     end
@@ -108,7 +109,7 @@ local function loadModule(self, module)
             print('^3Shared: ^1✗ No encontrado')
         end
         print('^0========================================^0')
-     
+
         local fn, err = load(chunk, ('@@ox_lib/wrappers/%s/%s.lua'):format(module, context))
 
         if not fn or err then
@@ -130,7 +131,8 @@ local function loadModule(self, module)
         end
         print('^2========================================^0')
 
-        return result
+        self[module] = result or noop
+        return self[module]
     end
 end
 
