@@ -1,8 +1,6 @@
----@meta
-
 ---@class lib.task
 ---@field ped number The ped entity this task system controls
-local Task = {}
+lib.task = lib.class("task")
 
 ---Task API Class - Client Only
 ---Task management system for client-side only
@@ -515,44 +513,133 @@ function lib.task:patrol(waypoints, speed, waitTime)
     if not waypoints or #waypoints < 2 then return false end
 
     speed = speed or 1.0
-    waitTime = waitTime or 2000
+    waitTime = waitTime or math.random(5000, 10000)
 
-    CreateThread(function()
-        local currentWaypoint = 1
+    -- Generate unique patrol route name
+    local routeName = string.format("miss_%s_%d",
+        string.sub(tostring(self.ped), -4), -- Last 4 digits of ped ID
+        math.random(1000, 9999)
+    )
 
-        while true do
-            local waypoint = waypoints[currentWaypoint]
-            if waypoint then
-                TaskGoStraightToCoord(self.ped, waypoint.x, waypoint.y, waypoint.z, speed, -1, 0.0, 0.0)
+    -- Store patrol route name for cleanup
+    self.currentPatrolRoute = routeName
 
-                -- Esperar hasta llegar al punto
-                local timeout = 30000 -- 30 segundos timeout
-                local startTime = GetGameTimer()
+    -- Open patrol route
+    OpenPatrolRoute(routeName)
 
-                while GetGameTimer() - startTime < timeout do
-                    local pedCoords = GetEntityCoords(self.ped)
-                    local distance = #(pedCoords - waypoint)
+    -- Add patrol route nodes
+    for i, waypoint in ipairs(waypoints) do
+        local nodeIndex = i - 1                    -- 0-based indexing
+        local scenario = "WORLD_HUMAN_GUARD_STAND" -- Default scenario
+        local duration = type(waitTime) == "table" and waitTime[i] or waitTime
 
-                    if distance < 2.0 then
-                        break
-                    end
+        -- Add the patrol node
+        AddPatrolRouteNode(
+            nodeIndex,
+            scenario,
+            waypoint.x, waypoint.y, waypoint.z,
+            duration
+        )
+    end
 
-                    Wait(500)
-                end
+    -- Link patrol route nodes to create a loop
+    for i = 1, #waypoints do
+        local currentNode = i - 1
+        local nextNode = i < #waypoints and i or 0 -- Loop back to start
 
-                -- Esperar en el punto
-                Wait(waitTime)
+        AddPatrolRouteLink(currentNode, nextNode)
+    end
 
-                -- Siguiente waypoint
-                currentWaypoint = currentWaypoint + 1
-                if currentWaypoint > #waypoints then
-                    currentWaypoint = 1 -- Volver al inicio
-                end
-            else
-                break
-            end
+    -- Close and create the patrol route
+    ClosePatrolRoute()
+    CreatePatrolRoute()
+
+    -- Start the patrol task
+    TaskPatrol(self.ped, routeName, speed, true, true)
+
+    return true
+end
+
+--- Stop the current patrol
+function lib.task:stopPatrol()
+    if not self:isValidPed() then return false end
+
+    -- Clear the current task
+    ClearPedTasks(self.ped)
+
+    -- Clean up patrol route if exists
+    if self.currentPatrolRoute then
+        DeletePatrolRoute(self.currentPatrolRoute)
+        self.currentPatrolRoute = nil
+    end
+
+    return true
+end
+
+--- Enhanced patrol with custom scenarios per waypoint
+--- @param waypoints table Array of waypoint objects with coords, scenario, and duration
+--- @param speed number Movement speed (default: 1.0)
+--- @param options table Additional options (loop, alertness, etc.)
+function lib.task:patrolAdvanced(waypoints, speed, options)
+    if not self:isValidPed() then return false end
+    if not waypoints or #waypoints < 2 then return false end
+
+    speed = speed or 1.0
+    options = options or {}
+
+    -- Generate unique patrol route name
+    local routeName = string.format("miss_%s_%d",
+        string.sub(tostring(self.ped), -4), -- Last 4 digits of ped ID
+        math.random(1000, 9999)
+    )
+
+    -- Store patrol route name for cleanup
+    self.currentPatrolRoute = routeName
+
+    -- Open patrol route
+    OpenPatrolRoute(routeName)
+
+    -- Add patrol route nodes with custom scenarios
+    for i, waypoint in ipairs(waypoints) do
+        local nodeIndex = i - 1 -- 0-based indexing
+        local coords = waypoint.coords or waypoint
+        local scenario = waypoint.scenario or "WORLD_HUMAN_GUARD_STAND"
+        local duration = waypoint.duration or waypoint.waitTime or math.random(5000, 10000)
+
+        -- Add the patrol node
+        AddPatrolRouteNode(
+            nodeIndex,
+            scenario,
+            coords.x, coords.y, coords.z,
+            duration
+        )
+    end
+
+    -- Link patrol route nodes
+    local loop = options.loop ~= false -- Default to true
+    for i = 1, #waypoints do
+        local currentNode = i - 1
+        local nextNode
+
+        if i < #waypoints then
+            nextNode = i
+        elseif loop then
+            nextNode = 0 -- Loop back to start
+        else
+            break        -- Don't create loop
         end
-    end)
+
+        AddPatrolRouteLink(currentNode, nextNode)
+    end
+
+    -- Close and create the patrol route
+    ClosePatrolRoute()
+    CreatePatrolRoute()
+
+    -- Start the patrol task with options
+    local combatRange = options.combatRange or true
+    local alertness = options.alertness or true
+    TaskPatrol(self.ped, routeName, speed, combatRange, alertness)
 
     return true
 end

@@ -36,6 +36,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.dispatch` - Universal dispatch wrapper (cd_dispatch/ps-dispatch)
 - `lib.phone` - Universal phone wrapper (qb-phone/qs-smartphone/etc)
 - `lib.banking` - Universal banking wrapper (okokBanking/qb-banking/etc)
+- `lib.tickets` - **NEW!** Advanced ticket system with player reporting and staff management
 
 ### ✨ **Key Features**
 
@@ -47,6 +48,123 @@ This is an **experimental extension** of the original ox_lib that adds:
 - **Singleton pattern** for direct access
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
+
+---
+
+## 🎟️ **NEW: Advanced Ticket System**
+
+The **Advanced Ticket System** provides a comprehensive player reporting and staff management solution with intelligent auto-assignment, priority levels, administrative actions, and Discord integration.
+
+### **The Problem It Solves**
+
+```lua
+-- Before: Basic reporting with no tracking or management
+-- Players: "/report Player is hacking" → lost in chat
+-- Staff: No organized way to handle reports
+-- Result: Reports get lost, no accountability, poor player experience
+```
+
+### **The Solution**
+
+```lua
+-- After: Ticket management system
+-- Players can create detailed reports
+lib.tickets.createReport(source, {
+    title = "Player Cheating",
+    description = "Player X is using aimbot in the city",
+    category = "cheating",
+    priority = "high",
+    location = GetEntityCoords(PlayerPedId())
+})
+
+-- Staff get organized ticket management
+lib.tickets.getTickets(source, {
+    status = "open",
+    assignedTo = source,
+    priority = "high"
+})
+```
+
+### **Key Features**
+
+- **📝 Player Reporting** - Easy `/report` command with categories and priorities
+- **👥 Staff Management** - Complete ticket assignment and tracking system
+- **🤖 Auto-Assignment** - Intelligent distribution based on staff workload
+- **⚡ Quick Actions** - `/stuck` command for immediate help
+- **🔧 Admin Tools** - Teleport, debug, freeze players, and more
+- **💬 Message System** - Internal staff notes and player communication
+- **📊 Analytics** - Performance tracking and statistics
+- **🎯 Priority Levels** - Low, medium, high, critical priorities
+- **🔗 Discord Integration** - Webhook notifications and logging
+- **🗃️ Templates** - Pre-made responses for common issues
+
+### **Available Commands**
+
+**For Players:**
+
+- `/report` - Create a new ticket
+- `/myreports` - View your tickets
+- `/stuck` - Quick help for being stuck
+
+**For Staff:**
+
+- `/tickets` - Main ticket management interface
+- `/ticket [id]` - View specific ticket
+- `/closeticket [id]` - Close a ticket
+- `/assignticket [id] [player]` - Assign ticket to staff
+
+### **Administrative Actions**
+
+Staff with `tickets.admin` permission can:
+
+- **Go to Player** - Teleport to player location
+- **Bring Player** - Teleport player to staff
+- **Debug Player** - Fix player position to nearest street
+- **Freeze/Unfreeze Player** - Control player movement
+- **Go to Location** - Teleport to report location
+
+### **Example Usage**
+
+```lua
+-- Player creates a report
+lib.tickets.createReport(source, {
+    title = "Stuck in building",
+    description = "I'm stuck inside the bank and can't get out",
+    category = "stuck",
+    priority = "medium",
+    location = vector3(150.0, -1040.0, 29.3)
+})
+
+-- Staff receives notification and can take actions
+lib.tickets.assignTicket(ticketId, staffId)
+lib.tickets.addMessage(ticketId, staffId, "I'll help you right away!", false)
+
+-- Administrative actions
+lib.tickets.executeAction(ticketId, "bring_player", { playerId = playerId })
+lib.tickets.executeAction(ticketId, "go_to_location", { coords = reportLocation })
+```
+
+### **Permission System**
+
+```bash
+# Admin permissions (full access)
+add_ace group.admin tickets.create allow
+add_ace group.admin tickets.manage allow
+add_ace group.admin tickets.admin allow
+add_ace group.admin tickets.supervisor allow
+
+# Moderator permissions (manage tickets but limited admin actions)
+add_ace group.mod tickets.create allow
+add_ace group.mod tickets.manage allow
+add_ace group.mod tickets.admin allow
+
+# Helper permissions (can only manage tickets)
+add_ace group.helper tickets.manage allow
+
+# Assign players to groups
+add_principal identifier.license:YOUR_LICENSE_HERE group.admin
+add_principal identifier.license:MOD_LICENSE_HERE group.mod
+```
 
 ---
 
@@ -220,8 +338,8 @@ local money = cache.money
 local citizenId = cache.citizenid
 
 -- Framework wrappers automatically use cache when available
-local money = lib.core.getMoney('cash') -- Uses cache.money if available, falls back to API
-local job = lib.core.getJob() -- Uses cache.job if available, instantly fast
+local money = lib.core:getMoney('cash') -- Uses cache.money if available, falls back to API
+local job = lib.core:getJob() -- Uses cache.job if available, instantly fast
 local identifier = lib.core.getIdentifier() -- Uses cache.citizenid, cache-first approach
 
 -- Higher-level cache access through events API (optional)
@@ -281,8 +399,8 @@ lib.events.on('player:job:changed', function(player, oldJob, newJob)
 end)
 
 -- Ultra-fast subsequent access (uses ox_lib native cache)
-local currentJob = lib.core.getJob() -- Instant response from cache.job
-local currentMoney = lib.core.getMoney('cash') -- Instant response from cache.money
+local currentJob = lib.core:getJob() -- Instant response from cache.job
+local currentMoney = lib.core:getMoney('cash') -- Instant response from cache.money
 local isLoaded = lib.core.isPlayerLoaded() -- Instant response from cache.citizenid
 
 -- Direct cache access (native ox_lib way)

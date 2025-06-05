@@ -44,7 +44,6 @@ local context = IsDuplicityVersion() and 'server' or 'client'
 function noop() end
 
 local function loadModule(self, module)
-    -- Intentar cargar desde imports primero (retrocompatibilidad)
     local dir = ('imports/%s'):format(module)
     local chunk = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(dir, context))
     local shared = LoadResourceFile(ox_lib, ('%s/shared.lua'):format(dir))
@@ -85,7 +84,8 @@ local function loadModule(self, module)
         end
 
         local result = fn()
-        return result
+        self[module] = result or noop
+        return self[module]
     end
 
     -- Si no se encontró en api/, intentar cargar desde wrappers/
@@ -98,7 +98,6 @@ local function loadModule(self, module)
     end
 
     if chunk then
-        -- Cartel grande para mostrar que se está cargando el wrapper
         print('^0========================================')
         print('^2[OX_LIB WRAPPER LOADER]^0')
         print('^3Módulo: ^5' .. module)
@@ -132,7 +131,8 @@ local function loadModule(self, module)
         end
         print('^2========================================^0')
 
-        return result
+        self[module] = result or noop
+        return self[module]
     end
 end
 

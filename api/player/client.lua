@@ -2,7 +2,7 @@
 
 ---@class lib.player
 ---@field playerId number The player ID or cache.ped if not specified
-local Player = {}
+lib.player = lib.class("player")
 
 ---Player API Class - Client Only
 ---Player management system for client-side only

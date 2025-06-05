@@ -17,7 +17,7 @@
 
 ---@class lib.vehicle
 ---@field vehicle number? The vehicle entity this instance controls
-local Vehicle = {}
+lib.vehicle = lib.class("vehicle")
 
 ---Vehicle API Class - Client Only
 ---Vehicle management system for client-side only
