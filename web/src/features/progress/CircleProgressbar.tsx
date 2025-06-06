@@ -23,7 +23,7 @@ const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; 
   },
   progress: {
     '> svg > circle:nth-child(1)': {
-      stroke: theme.colors.dark[5],
+      stroke: '#373A40',
     },
     // Scuffed way of grabbing the first section and animating it
     '> svg > circle:nth-child(2)': {
@@ -36,12 +36,12 @@ const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; 
     textAlign: 'center',
     fontFamily: 'Roboto Mono',
     textShadow: theme.shadows.sm,
-    color: theme.colors.gray[3],
+    color: '#C1C2C5',
   },
   label: {
     textAlign: 'center',
     textShadow: theme.shadows.sm,
-    color: theme.colors.gray[3],
+    color: '#909296',
     height: 25,
   },
   wrapper: {
@@ -88,7 +88,7 @@ const CircleProgressbar: React.FC = () => {
             <RingProgress
               size={90}
               thickness={7}
-              sections={[{ value: 0, color: theme.primaryColor }]}
+              sections={[{ value: 0, color: '#C1C2C5' }]}
               onAnimationEnd={() => setVisible(false)}
               className={classes.progress}
               label={<Text className={classes.value}>{value}%</Text>}

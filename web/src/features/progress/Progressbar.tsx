@@ -9,9 +9,21 @@ const useStyles = createStyles((theme) => ({
   container: {
     width: 350,
     height: 45,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.dark[5],
+    borderRadius: 0,
+    backgroundColor: '#25262B',
+    border: '1px solid #373A40',
     overflow: 'hidden',
+    position: 'relative',
+    boxShadow: 'inset 0 1px 0 rgba(0, 0, 0, 0.05)',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '1px',
+      background: 'linear-gradient(90deg, transparent, #5C5F66, transparent)',
+    }
   },
   wrapper: {
     width: '100%',
@@ -24,7 +36,19 @@ const useStyles = createStyles((theme) => ({
   },
   bar: {
     height: '100%',
-    backgroundColor: theme.colors[theme.primaryColor][theme.fn.primaryShade()],
+    backgroundColor: '#373A40',
+    position: 'relative',
+    transition: 'background-color 0.2s ease',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: '2px',
+      height: '100%',
+      background: '#C1C2C5',
+      boxShadow: '0 0 4px rgba(193, 194, 197, 0.3)',
+    }
   },
   labelWrapper: {
     position: 'absolute',
@@ -33,16 +57,20 @@ const useStyles = createStyles((theme) => ({
     height: 45,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   label: {
-    maxWidth: 350,
+    maxWidth: 320,
     padding: 8,
     textOverflow: 'ellipsis',
     overflow: 'hidden',
     whiteSpace: 'nowrap',
-    fontSize: 20,
-    color: theme.colors.gray[3],
-    textShadow: theme.shadows.sm,
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#C1C2C5',
+    letterSpacing: '0.02em',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+    fontFamily: 'Roboto',
   },
 }));
 
@@ -65,6 +93,9 @@ const Progressbar: React.FC = () => {
       <Box className={classes.wrapper}>
         <ScaleFade visible={visible} onExitComplete={() => fetchNui('progressComplete')}>
           <Box className={classes.container}>
+            <Box className={classes.labelWrapper}>
+              <Text className={classes.label}>{label}</Text>
+            </Box>
             <Box
               className={classes.bar}
               onAnimationEnd={() => setVisible(false)}
@@ -72,11 +103,7 @@ const Progressbar: React.FC = () => {
                 animation: 'progress-bar linear',
                 animationDuration: `${duration}ms`,
               }}
-            >
-              <Box className={classes.labelWrapper}>
-                <Text className={classes.label}>{label}</Text>
-              </Box>
-            </Box>
+            />
           </Box>
         </ScaleFade>
       </Box>

@@ -55,7 +55,7 @@ const InputDialog: React.FC = () => {
                   : row.default && new Date(row.default).getTime()
                 : row.default
               : row.checked,
-        } || { value: null }
+        }
       );
       // Backwards compat with new Select data type
       if (row.type === 'select' || row.type === 'multi-select') {
@@ -104,12 +104,30 @@ const InputDialog: React.FC = () => {
         closeOnEscape={fields.options?.allowCancel !== false}
         closeOnClickOutside={false}
         size="xs"
-        styles={{ title: { textAlign: 'center', width: '100%', fontSize: 18 } }}
+        styles={{ 
+          title: { textAlign: 'center', width: '100%', fontSize: 18, color: '#C1C2C5' },
+          modal: {
+            borderRadius: 0,
+            border: '1px solid #373A40',
+            boxShadow: 'none',
+            backgroundColor: '#1A1B1E'
+          },
+          header: {
+            borderBottom: '1px solid #373A40',
+            padding: 16,
+            backgroundColor: '#25262B'
+          },
+          body: {
+            padding: 16,
+            backgroundColor: '#1A1B1E'
+          }
+        }}
         title={fields.heading}
         withCloseButton={false}
-        overlayOpacity={0.5}
+        overlayOpacity={0.3}
         transition="fade"
-        exitTransitionDuration={150}
+        exitTransitionDuration={100}
+        transitionDuration={100}
       >
         <form onSubmit={onSubmit}>
           <Stack>
@@ -151,17 +169,42 @@ const InputDialog: React.FC = () => {
                 </React.Fragment>
               );
             })}
-            <Group position="right" spacing={10}>
+            <Group position="right" spacing={8}>
               <Button
-                uppercase
-                variant="default"
+                variant="outline"
                 onClick={() => handleClose()}
-                mr={3}
                 disabled={fields.options?.allowCancel === false}
+                styles={{
+                  root: {
+                    borderRadius: 0,
+                    border: '1px solid #373A40',
+                    color: '#909296',
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: '#25262B',
+                      borderColor: '#5C5F66'
+                    }
+                  }
+                }}
               >
                 {locale.ui.cancel}
               </Button>
-              <Button uppercase variant="light" type="submit">
+              <Button 
+                variant="filled" 
+                type="submit"
+                styles={{
+                  root: {
+                    borderRadius: 0,
+                    backgroundColor: '#373A40',
+                    border: '1px solid #373A40',
+                    color: '#C1C2C5',
+                    '&:hover': {
+                      backgroundColor: '#5C5F66',
+                      borderColor: '#5C5F66',
+                    }
+                  }
+                }}
+              >
                 {locale.ui.confirm}
               </Button>
             </Group>

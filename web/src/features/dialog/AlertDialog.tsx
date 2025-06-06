@@ -10,8 +10,56 @@ import MarkdownComponents from '../../config/MarkdownComponents';
 
 const useStyles = createStyles((theme) => ({
   contentStack: {
-    color: theme.colors.dark[2],
+    color: '#C1C2C5',
+    position: 'relative',
   },
+  headerText: {
+    fontWeight: 500,
+    letterSpacing: '0.02em',
+    lineHeight: 1.3,
+    position: 'relative',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      bottom: -4,
+      left: 0,
+      width: '30%',
+      height: '1px',
+      background: 'linear-gradient(90deg, #5C5F66, transparent)',
+      transition: 'width 0.3s ease',
+    }
+  },
+  contentText: {
+    lineHeight: 1.5,
+    letterSpacing: '0.01em',
+    '& p': {
+      margin: '8px 0',
+    },
+    '& strong': {
+      fontWeight: 500,
+      color: '#A6A7AB',
+    },
+    '& code': {
+      fontFamily: 'Roboto Mono',
+      fontSize: '0.9em',
+      padding: '2px 6px',
+      background: '#25262B',
+      border: '1px solid #373A40',
+      letterSpacing: '0.05em',
+    }
+  },
+  buttonGroup: {
+    position: 'relative',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: -8,
+      left: 0,
+      right: 0,
+      height: '1px',
+      background: 'linear-gradient(90deg, transparent, #373A40, transparent)',
+    }
+  }
 }));
 
 const AlertDialog: React.FC = () => {
@@ -51,32 +99,97 @@ const AlertDialog: React.FC = () => {
           closeAlert('cancel');
         }}
         withCloseButton={false}
-        overlayOpacity={0.5}
-        exitTransitionDuration={150}
+        overlayOpacity={0.3}
+        exitTransitionDuration={100}
+        transitionDuration={100}
         transition="fade"
-        title={<ReactMarkdown components={MarkdownComponents}>{dialogData.header}</ReactMarkdown>}
+        title={
+          <div className={classes.headerText}>
+            <ReactMarkdown components={MarkdownComponents}>{dialogData.header}</ReactMarkdown>
+          </div>
+        }
+        styles={{
+          modal: {
+            borderRadius: 0,
+            border: '1px solid #373A40',
+            boxShadow: 'none',
+            backgroundColor: '#1A1B1E'
+          },
+          header: {
+            borderBottom: '1px solid #373A40',
+            padding: 16,
+            fontWeight: 500,
+            backgroundColor: '#25262B',
+            color: '#C1C2C5'
+          },
+          body: {
+            padding: 16,
+            backgroundColor: '#1A1B1E'
+          }
+        }}
       >
-        <Stack className={classes.contentStack}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              ...MarkdownComponents,
-              img: ({ ...props }) => <img style={{ maxWidth: '100%', maxHeight: '100%' }} {...props} />,
-            }}
-          >
-            {dialogData.content}
-          </ReactMarkdown>
-          <Group position="right" spacing={10}>
+        <Stack className={classes.contentStack} spacing={16}>
+          <div className={classes.contentText}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                ...MarkdownComponents,
+                img: ({ ...props }) => <img style={{ maxWidth: '100%', maxHeight: '100%' }} {...props} />,
+              }}
+            >
+              {dialogData.content}
+            </ReactMarkdown>
+          </div>
+          <Group position="right" spacing={8} className={classes.buttonGroup}>
             {dialogData.cancel && (
-              <Button uppercase variant="default" onClick={() => closeAlert('cancel')} mr={3}>
+              <Button 
+                variant="outline" 
+                onClick={() => closeAlert('cancel')} 
+                styles={{
+                  root: {
+                    borderRadius: 0,
+                    border: '1px solid #373A40',
+                    color: '#909296',
+                    backgroundColor: 'transparent',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      backgroundColor: '#25262B',
+                      borderColor: '#5C5F66',
+                      transform: 'scale(1.02)',
+                    },
+                    '&:active': {
+                      transform: 'scale(0.98)',
+                    }
+                  }
+                }}
+              >
                 {dialogData.labels?.cancel || locale.ui.cancel}
               </Button>
             )}
             <Button
-              uppercase
-              variant={dialogData.cancel ? 'light' : 'default'}
-              color={dialogData.cancel ? theme.primaryColor : undefined}
+              variant="filled"
               onClick={() => closeAlert('confirm')}
+              styles={{
+                root: {
+                  borderRadius: 0,
+                  backgroundColor: '#373A40',
+                  border: '1px solid #373A40',
+                  color: '#C1C2C5',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:hover': {
+                    backgroundColor: '#5C5F66',
+                    borderColor: '#5C5F66',
+                    transform: 'scale(1.02)',
+                  },
+                  '&:active': {
+                    transform: 'scale(0.98)',
+                  }
+                }
+              }}
             >
               {dialogData.labels?.confirm || locale.ui.confirm}
             </Button>

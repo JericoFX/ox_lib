@@ -12,29 +12,102 @@ const useStyles = createStyles((theme) => ({
   container: {
     width: 300,
     height: 'fit-content',
-    backgroundColor: theme.colors.dark[6],
-    color: theme.colors.dark[0],
-    padding: 12,
-    borderRadius: theme.radius.sm,
+    backgroundColor: '#25262B',
+    color: '#C1C2C5',
+    padding: 16,
+    borderRadius: 0,
     fontFamily: 'Roboto',
-    boxShadow: theme.shadows.sm,
+    boxShadow: 'inset 0 1px 0 rgba(0, 0, 0, 0.05)',
+    border: '1px solid #373A40',
+    position: 'relative',
+    overflow: 'hidden',
+    transition: 'all 0.2s ease',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '2px',
+      height: '100%',
+      background: 'linear-gradient(180deg, #5C5F66, #373A40)',
+      transition: 'all 0.3s ease',
+    },
+    '&:hover': {
+      backgroundColor: '#2C2E33',
+      borderColor: '#5C5F66',
+      transform: 'translateX(2px)',
+      '&::before': {
+        width: '3px',
+        background: 'linear-gradient(180deg, #C1C2C5, #5C5F66)',
+      }
+    }
   },
   title: {
     fontWeight: 500,
-    lineHeight: 'normal',
+    lineHeight: 1.4,
+    fontSize: 14,
+    letterSpacing: '0.02em',
+    transition: 'all 0.2s ease',
+    position: 'relative',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      bottom: -2,
+      left: 0,
+      width: '0%',
+      height: '1px',
+      background: '#909296',
+      transition: 'width 0.3s ease',
+    }
   },
   description: {
     fontSize: 12,
-    color: theme.colors.dark[2],
+    color: '#909296',
     fontFamily: 'Roboto',
-    lineHeight: 'normal',
+    lineHeight: 1.4,
+    fontWeight: 400,
+    letterSpacing: '0.01em',
+    transition: 'color 0.2s ease',
   },
   descriptionOnly: {
     fontSize: 14,
-    color: theme.colors.dark[2],
+    color: '#909296',
     fontFamily: 'Roboto',
-    lineHeight: 'normal',
+    lineHeight: 1.4,
+    fontWeight: 400,
+    letterSpacing: '0.01em',
+    transition: 'color 0.2s ease',
   },
+  iconContainer: {
+    width: 24,
+    height: 24,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #373A40',
+    backgroundColor: '#1A1B1E',
+    position: 'relative',
+    transition: 'all 0.2s ease',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: -1,
+      right: -1,
+      width: '4px',
+      height: '4px',
+      background: '#C1C2C5',
+      opacity: 0,
+      transition: 'opacity 0.2s ease',
+    },
+    '&:hover': {
+      backgroundColor: '#25262B',
+      borderColor: '#5C5F66',
+      transform: 'scale(1.1)',
+      '&::after': {
+        opacity: 1,
+      }
+    }
+  }
 }));
 
 const createAnimation = (from: string, to: string, visible: boolean) => keyframes({
@@ -49,22 +122,28 @@ const createAnimation = (from: string, to: string, visible: boolean) => keyframe
 });
 
 const getAnimation = (visible: boolean, position: string) => {
-  const animationOptions = visible ? '0.2s ease-out forwards' : '0.4s ease-in forwards'
+  const animationOptions = visible ? '0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards' : '0.2s ease-in forwards'
   let animation: { from: string; to: string };
 
   if (visible) {
-    animation = position.includes('bottom') ? { from: 'Y(30px)', to: 'Y(0px)' } : { from: 'Y(-30px)', to:'Y(0px)' };
+    if (position.includes('right')) {
+      animation = { from: 'X(50px)', to: 'X(0px)' };
+    } else if (position.includes('left')) {
+      animation = { from: 'X(-50px)', to: 'X(0px)' };
+    } else {
+      animation = { from: 'Y(-20px)', to: 'Y(0px)' };
+    }
   } else {
     if (position.includes('right')) {
-      animation = { from: 'X(0px)', to: 'X(100%)' }
+      animation = { from: 'X(0px)', to: 'X(120%)' }
     } else if (position.includes('left')) {
-      animation = { from: 'X(0px)', to: 'X(-100%)' };
+      animation = { from: 'X(0px)', to: 'X(-120%)' };
     } else if (position === 'top-center') {
-      animation = { from: 'Y(0px)', to: 'Y(-100%)' };
+      animation = { from: 'Y(0px)', to: 'Y(-120%)' };
     } else if (position === 'bottom') {
-      animation = { from: 'Y(0px)', to: 'Y(100%)' };
+      animation = { from: 'Y(0px)', to: 'Y(120%)' };
     } else {
-      animation = { from: 'X(0px)', to: 'X(100%)' };
+      animation = { from: 'X(0px)', to: 'X(120%)' };
     }
   }
 
@@ -151,50 +230,23 @@ const Notifications: React.FC = () => {
           <Group noWrap spacing={12}>
             {data.icon && (
               <>
-                {data.showDuration ? (
-                  <RingProgress
-                    key={toastKey}
-                    size={38}
-                    thickness={2}
-                    sections={[{ value: 100, color: iconColor }]}
-                    style={{ alignSelf: !data.alignIcon || data.alignIcon === 'center' ? 'center' : 'start' }}
-                    styles={{
-                      root: {
-                        '> svg > circle:nth-of-type(2)': {
-                          animation: `${durationCircle} linear forwards reverse`,
-                          animationDuration: `${duration}ms`,
-                        },
-                        margin: -3,
-                      },
-                    }}
-                    label={
-                      <Center>
-                        <ThemeIcon
-                          color={iconColor}
-                          radius="xl"
-                          size={32}
-                          variant={tinycolor(iconColor).getAlpha() < 0 ? undefined : 'light'}
-                        >
-                          <LibIcon icon={data.icon} fixedWidth color={iconColor} animation={data.iconAnimation} />
-                        </ThemeIcon>
-                      </Center>
-                    }
-                  />
-                ) : (
-                  <ThemeIcon
-                    color={iconColor}
-                    radius="xl"
-                    size={32}
-                    variant={tinycolor(iconColor).getAlpha() < 0 ? undefined : 'light'}
-                    style={{ alignSelf: !data.alignIcon || data.alignIcon === 'center' ? 'center' : 'start' }}
-                  >
-                    <LibIcon icon={data.icon} fixedWidth color={iconColor} animation={data.iconAnimation} />
-                  </ThemeIcon>
-                )}
+                <Box
+                  className={classes.iconContainer}
+                  style={{ 
+                    alignSelf: !data.alignIcon || data.alignIcon === 'center' ? 'center' : 'start',
+                  }}
+                >
+                  <LibIcon icon={data.icon} fixedWidth color={iconColor} animation={data.iconAnimation} />
+                </Box>
               </>
             )}
-            <Stack spacing={0}>
-              {data.title && <Text className={classes.title}>{data.title}</Text>}
+            <Stack spacing={data.title && data.description ? 8 : 0}>
+              {data.title && (
+                <div>
+                  <Text className={classes.title}>{data.title}</Text>
+                  {data.description && <div className="divider-line" style={{ margin: '4px 0', height: '1px', background: 'linear-gradient(90deg, transparent, #373A40 20%, transparent 80%)' }} />}
+                </div>
+              )}
               {data.description && (
                 <ReactMarkdown
                   components={MarkdownComponents}

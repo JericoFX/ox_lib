@@ -17,32 +17,47 @@ const useStyles = createStyles((theme) => ({
     transform: 'translate(-50%, -50%)',
   },
   sector: {
-    fill: theme.colors.dark[6],
-    color: theme.colors.dark[0],
+    fill: '#25262B',
+    color: '#C1C2C5',
+    stroke: '#373A40',
+    strokeWidth: 1,
+    transition: 'all 0.2s ease',
 
     '&:hover': {
-      fill: theme.fn.primaryColor(),
+      fill: '#373A40',
       cursor: 'pointer',
+      stroke: '#5C5F66',
+      strokeWidth: 2,
       '> g > text, > g > svg > path': {
-        fill: '#fff',
+        fill: '#C1C2C5',
       },
     },
     '> g > text': {
-      fill: theme.colors.dark[0],
+      fill: '#C1C2C5',
       strokeWidth: 0,
+      fontFamily: 'Roboto',
+      fontWeight: 400,
+      letterSpacing: '0.01em',
+      textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
     },
   },
   backgroundCircle: {
-    fill: theme.colors.dark[6],
+    fill: '#1A1B1E',
+    stroke: '#373A40',
+    strokeWidth: 2,
   },
   centerCircle: {
-    fill: theme.fn.primaryColor(),
-    color: '#fff',
-    stroke: theme.colors.dark[6],
-    strokeWidth: 4,
+    fill: '#373A40',
+    color: '#C1C2C5',
+    stroke: '#5C5F66',
+    strokeWidth: 2,
+    transition: 'all 0.2s ease',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
     '&:hover': {
       cursor: 'pointer',
-      fill: theme.colors[theme.primaryColor][theme.fn.primaryShade() - 1],
+      fill: '#5C5F66',
+      stroke: '#909296',
+      transform: 'scale(1.1)',
     },
   },
   centerIconContainer: {
@@ -51,9 +66,11 @@ const useStyles = createStyles((theme) => ({
     left: '50%',
     transform: 'translate(-50%, -50%)',
     pointerEvents: 'none',
+    transition: 'all 0.2s ease',
   },
   centerIcon: {
-    color: '#fff',
+    color: '#C1C2C5',
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5))',
   },
 }));
 
@@ -208,11 +225,17 @@ const RadialMenu: React.FC = () => {
                     <text
                       x={iconX}
                       y={iconY + (splitTextIntoLines(item.label, 15).length > 2 ? 15 : 28)}
-                      fill="#fff"
+                      fill="#C1C2C5"
                       textAnchor="middle"
                       fontSize={calculateFontSize(item.label)}
                       pointerEvents="none"
                       lengthAdjust="spacingAndGlyphs"
+                      fontFamily="Roboto"
+                      fontWeight="400"
+                      style={{
+                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+                        letterSpacing: '0.01em'
+                      }}
                     >
                       {splitTextIntoLines(item.label, 15).map((line, index) => (
                         <tspan x={iconX} dy={index === 0 ? 0 : '1.2em'} key={index}>
@@ -245,7 +268,7 @@ const RadialMenu: React.FC = () => {
               icon={!menu.sub && menu.page < 2 ? 'xmark' : 'arrow-rotate-left'}
               fixedWidth
               className={classes.centerIcon}
-              color="#fff"
+              color="#C1C2C5"
               size="2x"
             />
           </div>

@@ -28,21 +28,52 @@ const useStyles = createStyles((theme) => ({
     gap: 6,
   },
   titleContainer: {
-    borderRadius: 4,
+    borderRadius: 0,
     flex: '1 85%',
-    backgroundColor: theme.colors.dark[6],
+    backgroundColor: '#25262B',
+    border: '1px solid #373A40',
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '1px',
+      background: 'linear-gradient(90deg, transparent, #5C5F66, transparent)',
+    }
   },
   titleText: {
-    color: theme.colors.dark[0],
-    padding: 6,
+    color: '#C1C2C5',
+    padding: 8,
     textAlign: 'center',
+    fontWeight: 500,
+    letterSpacing: '0.02em',
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
   },
   buttonsContainer: {
     height: 560,
     overflowY: 'scroll',
+    backgroundColor: '#1A1B1E',
+    border: '1px solid #373A40',
+    borderRadius: 0,
+    padding: 8,
+    position: 'relative',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 8,
+      right: 8,
+      height: '1px',
+      background: 'linear-gradient(90deg, transparent, #373A40, transparent)',
+    }
   },
   buttonsFlexWrapper: {
-    gap: 3,
+    gap: 2,
   },
 }));
 
