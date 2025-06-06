@@ -1,11 +1,10 @@
-
 local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will load every existent resource and the once that start later, fuck... sorry for the spanish comments, it helps me a lot
     local config = require "wrappers.config"
     local mapping = config[wrapperType] or {}
-    
+
     local function loadSystemFunctions(system)
         if not system then return {} end
-        
+
         local context = lib.context
         local systemPath = ('wrappers/%s/%s/%s.lua'):format(wrapperType, system, context)
         local chunk = LoadResourceFile('ox_lib', systemPath)
@@ -28,29 +27,28 @@ local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will l
         return {}
     end
 
-    local detectedSystem = nil
-    local detectedResource = nil
-    
-    for resourceName, system in pairs(mapping) do
-        if GetResourceState(resourceName) == 'started' then
-            detectedSystem = system
-            detectedResource = resourceName
-            print('^2[' .. wrapperType:upper() .. ' DETECTOR] Encontrado: ' .. resourceName .. ' -> ' .. system)
-            break
+    local function detectAndLoadSystem()
+        for resourceName, system in pairs(mapping) do
+            if GetResourceState(resourceName) == 'started' then
+                print('^2[' .. wrapperType:upper() .. ' DETECTOR] Encontrado: ' .. resourceName .. ' -> ' .. system)
+
+                local instance = loadSystemFunctions(system)
+                if wrapperType == 'core' then
+                    instance.framework = system
+                    instance.resourceName = resourceName
+                else
+                    instance.system = system
+                end
+
+                lib[libKey] = instance
+                print('^2[' .. wrapperType:upper() .. '] lib.' .. libKey .. ' configurado exitosamente^0')
+                return true
+            end
         end
+        return false
     end
 
-    if detectedSystem then
-        local instance = loadSystemFunctions(detectedSystem)
-        if wrapperType == 'core' then
-            instance.framework = detectedSystem
-            instance.resourceName = detectedResource
-        else
-            instance.system = detectedSystem
-        end
-        lib[libKey] = instance
-        print('^2[' .. wrapperType:upper() .. '] lib.' .. libKey .. ' configurado exitosamente^0')
-    else
+    if not detectAndLoadSystem() then
         lib[libKey] = {
             [wrapperType == 'core' and 'framework' or 'system'] = 'unknown'
         }
@@ -59,23 +57,44 @@ local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will l
 
     AddEventHandler('onResourceStart', function(resourceName)
         local system = mapping[resourceName]
-        
-        -- Solo actualizar si no se ha detectado nada o si está en unknown
-        local currentFramework = lib[libKey] and lib[libKey][wrapperType == 'core' and 'framework' or 'system']
-        
-        if system and (not currentFramework or currentFramework == 'unknown') then
-            print('^2[' .. wrapperType:upper() .. ' INICIADO] ' .. resourceName .. ' -> ' .. system)
 
-            local instance = loadSystemFunctions(system)
-            if wrapperType == 'core' then
-                instance.framework = system
-                instance.resourceName = resourceName
-            else
-                instance.system = system
+        if system then
+            local currentSystem = lib[libKey] and lib[libKey][wrapperType == 'core' and 'framework' or 'system']
+
+            if currentSystem == 'unknown' then
+                print('^2[' .. wrapperType:upper() .. ' INICIADO] ' .. resourceName .. ' -> ' .. system)
+
+                local instance = loadSystemFunctions(system)
+                if wrapperType == 'core' then
+                    instance.framework = system
+                    instance.resourceName = resourceName
+                else
+                    instance.system = system
+                end
+
+                lib[libKey] = instance
+                print('^2[' .. wrapperType:upper() .. '] lib.' .. libKey .. ' actualizado exitosamente^0')
             end
+        end
+    end)
 
-            lib[libKey] = instance
-            print('^2[' .. wrapperType:upper() .. '] lib.' .. libKey .. ' actualizado exitosamente^0')
+    AddEventHandler('onResourceStop', function(resourceName)
+        local system = mapping[resourceName]
+
+        if system and lib[libKey] then
+            local currentResourceName = lib[libKey].resourceName
+            local currentSystem = lib[libKey][wrapperType == 'core' and 'framework' or 'system']
+
+            if currentResourceName == resourceName or currentSystem == system then
+                print('^1[' .. wrapperType:upper() .. ' DETENIDO] ' .. resourceName .. ' -> ' .. system)
+
+                if not detectAndLoadSystem() then
+                    lib[libKey] = {
+                        [wrapperType == 'core' and 'framework' or 'system'] = 'unknown'
+                    }
+                    print('^3[' .. wrapperType:upper() .. '] Volviendo a unknown, no hay sistemas disponibles^0')
+                end
+            end
         end
     end)
 

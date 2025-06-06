@@ -372,13 +372,43 @@ lib.events.emitAllClients('server:announcement', info)
 
 ---
 
+## 🔧 **Syntax Differences Between Client and Server**
+
+**Important:** There are key syntax differences when calling wrapper methods:
+
+### **Client-Side (uses colon `:` for methods)**
+
+```lua
+-- Client uses colon syntax for methods
+local player = lib.core:getPlayerData() -- Uses colon :
+local money = lib.core:getMoney('cash') -- Uses colon :
+local job = lib.core:getJob() -- Uses colon :
+```
+
+### **Server-Side (uses dot `.` for methods)**
+
+```lua
+-- Server uses dot syntax for methods
+local player = lib.core.getPlayerData(source) -- Uses dot .
+local money = lib.core.getMoney(source, 'cash') -- Uses dot .
+local job = lib.core.getJob(source) -- Uses dot .
+```
+
+This difference exists because:
+
+- **Client**: Methods operate on the current player (implicit `self`)
+- **Server**: Methods require a player `source` parameter (explicit target)
+
+---
+
 ## Example Usage (EXPERIMENTAL)
 
 ```lua
 -- ⚠️ EXPERIMENTAL CODE - DO NOT USE IN PRODUCTION
 
 -- Universal player access (works with ESX/QBCore/ox_core automatically)
-local player = lib.core.getPlayerData() -- Uses cache.playerData when available
+local player = lib.core:getPlayerData() -- CLIENT: Uses colon : (cache.playerData when available)
+-- local player = lib.core.getPlayerData(source) -- SERVER: Uses dot . with source parameter
 print(player.citizenid)  -- Works regardless of framework
 print(player.money.cash) -- Normalized money structure
 
@@ -399,9 +429,13 @@ lib.events.on('player:job:changed', function(player, oldJob, newJob)
 end)
 
 -- Ultra-fast subsequent access (uses ox_lib native cache)
-local currentJob = lib.core:getJob() -- Instant response from cache.job
-local currentMoney = lib.core:getMoney('cash') -- Instant response from cache.money
-local isLoaded = lib.core.isPlayerLoaded() -- Instant response from cache.citizenid
+local currentJob = lib.core:getJob() -- CLIENT: Instant response from cache.job
+local currentMoney = lib.core:getMoney('cash') -- CLIENT: Instant response from cache.money
+local isLoaded = lib.core:isPlayerLoaded() -- CLIENT: Instant response from cache.citizenid
+-- SERVER equivalents:
+-- local currentJob = lib.core.getJob(source)
+-- local currentMoney = lib.core.getMoney(source, 'cash')
+-- local isLoaded = lib.core.isPlayerLoaded(source)
 
 -- Direct cache access (native ox_lib way)
 local directJobAccess = cache.job and cache.job.name
@@ -534,9 +568,10 @@ lib.events.on('player:loaded', function(player)
 end)
 
 -- Subsequent calls are lightning fast using native cache
-local job1 = lib.core.getJob()        -- Cache hit - instant (uses cache.job)
-local job2 = lib.core.getJob()        -- Cache hit - instant (uses cache.job)
-local money = lib.core.getMoney()     -- Cache hit - instant (uses cache.money)
+local job1 = lib.core:getJob()        -- CLIENT: Cache hit - instant (uses cache.job)
+local job2 = lib.core:getJob()        -- CLIENT: Cache hit - instant (uses cache.job)
+local money = lib.core:getMoney()     -- CLIENT: Cache hit - instant (uses cache.money)
+-- SERVER equivalents: lib.core.getJob(source), lib.core.getMoney(source)
 -- Or direct access: cache.job.name, cache.money.cash, cache.citizenid
 -- Result: Up to 100x faster response times
 ```
