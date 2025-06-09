@@ -357,6 +357,15 @@
   }
 }
 
+@keyframes progress-bar-minimal {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 html {
   color-scheme: normal !important;
 }

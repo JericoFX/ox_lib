@@ -10,9 +10,10 @@ import LibIcon from '../../../components/LibIcon';
 
 const useStyles = createStyles((theme, params: { position?: MenuPosition; itemCount: number; selected: number }) => ({
   tooltip: {
-    backgroundColor: theme.colors.dark[6],
-    color: theme.colors.dark[2],
-    borderRadius: theme.radius.sm,
+    backgroundColor: 'rgba(18, 18, 18, 0.95)',
+    color: '#e2e8f0',
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    borderRadius: 0,
     maxWidth: 350,
     whiteSpace: 'normal',
   },
@@ -33,21 +34,20 @@ const useStyles = createStyles((theme, params: { position?: MenuPosition; itemCo
     height: 'fit-content',
     maxHeight: 415,
     overflow: 'hidden',
-    borderRadius: params.itemCount <= 6 || params.selected === params.itemCount - 1 ? theme.radius.md : undefined,
-    backgroundColor: theme.colors.dark[8],
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    borderRadius: 0,
+    backgroundColor: 'rgba(10, 10, 10, 0.95)',
+    border: '1px solid rgba(59, 130, 246, 0.08)',
   },
   scrollArrow: {
-    backgroundColor: theme.colors.dark[8],
+    backgroundColor: 'rgba(10, 10, 10, 0.95)',
     textAlign: 'center',
-    borderBottomLeftRadius: theme.radius.md,
-    borderBottomRightRadius: theme.radius.md,
+    borderRadius: 0,
     height: 25,
+    borderTop: '1px solid rgba(59, 130, 246, 0.1)',
   },
   scrollArrowIcon: {
-    color: theme.colors.dark[2],
-    fontSize: 20,
+    color: '#64748b',
+    fontSize: 16,
   },
 }));
 

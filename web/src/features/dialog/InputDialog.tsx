@@ -105,21 +105,32 @@ const InputDialog: React.FC = () => {
         closeOnClickOutside={false}
         size="xs"
         styles={{ 
-          title: { textAlign: 'center', width: '100%', fontSize: 18, color: '#C1C2C5' },
+          title: { textAlign: 'center', width: '100%', fontSize: 14, color: '#e2e8f0', fontWeight: 500, letterSpacing: '0.025em' },
           modal: {
             borderRadius: 0,
-            border: '1px solid #373A40',
-            boxShadow: 'none',
-            backgroundColor: '#1A1B1E'
+            border: '1px solid rgba(59, 130, 246, 0.1)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            backgroundColor: 'rgba(10, 10, 10, 0.95)'
           },
           header: {
-            borderBottom: '1px solid #373A40',
-            padding: 16,
-            backgroundColor: '#25262B'
+            borderBottom: '1px solid rgba(59, 130, 246, 0.1)',
+            padding: 10,
+            backgroundColor: 'rgba(18, 18, 18, 0.95)',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.2) 40%, rgba(255, 255, 255, 0.4) 50%, rgba(59, 130, 246, 0.2) 60%, transparent 100%)',
+            }
           },
           body: {
-            padding: 16,
-            backgroundColor: '#1A1B1E'
+            padding: 10,
+            backgroundColor: 'rgba(10, 10, 10, 0.95)'
           }
         }}
         title={fields.heading}
@@ -177,12 +188,17 @@ const InputDialog: React.FC = () => {
                 styles={{
                   root: {
                     borderRadius: 0,
-                    border: '1px solid #373A40',
-                    color: '#909296',
+                    border: '1px solid rgba(59, 130, 246, 0.1)',
+                    color: '#64748b',
                     backgroundColor: 'transparent',
+                    transition: 'all 0.15s ease',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.02em',
                     '&:hover': {
-                      backgroundColor: '#25262B',
-                      borderColor: '#5C5F66'
+                      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                      borderColor: 'rgba(59, 130, 246, 0.2)',
+                      color: '#e2e8f0',
                     }
                   }
                 }}
@@ -195,12 +211,18 @@ const InputDialog: React.FC = () => {
                 styles={{
                   root: {
                     borderRadius: 0,
-                    backgroundColor: '#373A40',
-                    border: '1px solid #373A40',
-                    color: '#C1C2C5',
+                    backgroundColor: '#3b82f6',
+                    border: '1px solid #3b82f6',
+                    color: '#ffffff',
+                    transition: 'all 0.15s ease',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.02em',
+                    boxShadow: '0 0 8px rgba(59, 130, 246, 0.3)',
                     '&:hover': {
-                      backgroundColor: '#5C5F66',
-                      borderColor: '#5C5F66',
+                      backgroundColor: '#1e40af',
+                      borderColor: '#1e40af',
+                      boxShadow: '0 0 12px rgba(59, 130, 246, 0.4)',
                     }
                   }
                 }}

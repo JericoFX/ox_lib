@@ -6,12 +6,29 @@ const useStyles = createStyles((theme) => ({
     alignItems: 'center',
   },
   input: {
-    backgroundColor: theme.colors.dark[7],
-    '&:checked': { backgroundColor: theme.colors.dark[2], borderColor: theme.colors.dark[2] },
+    backgroundColor: 'transparent',
+    border: '1px solid rgba(59, 130, 246, 0.2)',
+    borderRadius: 0,
+    width: 16,
+    height: 16,
+    transition: 'all 0.15s ease',
+    '&:checked': { 
+      backgroundColor: 'rgba(59, 130, 246, 0.8)', 
+      borderColor: '#3b82f6',
+      boxShadow: '0 0 4px rgba(59, 130, 246, 0.3)',
+    },
+    '&:hover': {
+      borderColor: 'rgba(59, 130, 246, 0.4)',
+    },
   },
   inner: {
+    '> svg': {
+      width: 10,
+      height: 10,
+    },
     '> svg > path': {
-      fill: theme.colors.dark[6],
+      fill: '#ffffff',
+      strokeWidth: 2,
     },
   },
 }));

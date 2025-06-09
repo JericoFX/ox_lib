@@ -10,42 +10,36 @@ import MarkdownComponents from '../../config/MarkdownComponents';
 
 const useStyles = createStyles((theme) => ({
   contentStack: {
-    color: '#C1C2C5',
+    color: '#e2e8f0',
     position: 'relative',
   },
   headerText: {
     fontWeight: 500,
-    letterSpacing: '0.02em',
+    letterSpacing: '0.025em',
     lineHeight: 1.3,
     position: 'relative',
-    '&::after': {
-      content: '""',
-      position: 'absolute',
-      bottom: -4,
-      left: 0,
-      width: '30%',
-      height: '1px',
-      background: 'linear-gradient(90deg, #5C5F66, transparent)',
-      transition: 'width 0.3s ease',
-    }
+    
+    fontSize: 16,
   },
   contentText: {
     lineHeight: 1.5,
-    letterSpacing: '0.01em',
+    letterSpacing: '0.02em',
+    fontSize: 13,
     '& p': {
       margin: '8px 0',
     },
     '& strong': {
       fontWeight: 500,
-      color: '#A6A7AB',
+      color: '#e2e8f0',
     },
     '& code': {
       fontFamily: 'Roboto Mono',
       fontSize: '0.9em',
       padding: '2px 6px',
-      background: '#25262B',
-      border: '1px solid #373A40',
+      background: 'rgba(18, 18, 18, 0.8)',
+      border: '1px solid rgba(59, 130, 246, 0.1)',
       letterSpacing: '0.05em',
+      borderRadius: 0,
     }
   },
   buttonGroup: {
@@ -57,7 +51,7 @@ const useStyles = createStyles((theme) => ({
       left: 0,
       right: 0,
       height: '1px',
-      background: 'linear-gradient(90deg, transparent, #373A40, transparent)',
+      background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.2) 40%, rgba(255, 255, 255, 0.3) 50%, rgba(59, 130, 246, 0.2) 60%, transparent 100%)',
     }
   }
 }));
@@ -111,20 +105,31 @@ const AlertDialog: React.FC = () => {
         styles={{
           modal: {
             borderRadius: 0,
-            border: '1px solid #373A40',
-            boxShadow: 'none',
-            backgroundColor: '#1A1B1E'
+            border: '1px solid rgba(59, 130, 246, 0.1)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            backgroundColor: 'rgba(10, 10, 10, 1)'
           },
           header: {
-            borderBottom: '1px solid #373A40',
+            borderBottom: '1px solid rgba(59, 130, 246, 0.1)',
             padding: 16,
             fontWeight: 500,
-            backgroundColor: '#25262B',
-            color: '#C1C2C5'
+            backgroundColor: 'rgba(18, 18, 18, 0.95)',
+            color: '#e2e8f0',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.2) 40%, rgba(255, 255, 255, 0.4) 50%, rgba(59, 130, 246, 0.2) 60%, transparent 100%)',
+            }
           },
           body: {
             padding: 16,
-            backgroundColor: '#1A1B1E'
+            backgroundColor: 'rgba(10, 10, 10, 0.95)'
           }
         }}
       >
@@ -148,20 +153,18 @@ const AlertDialog: React.FC = () => {
                 styles={{
                   root: {
                     borderRadius: 0,
-                    border: '1px solid #373A40',
-                    color: '#909296',
+                    border: '1px solid rgba(59, 130, 246, 0.1)',
+                    color: '#64748b',
                     backgroundColor: 'transparent',
-                    transition: 'all 0.2s ease',
-                    position: 'relative',
-                    overflow: 'hidden',
+                    transition: 'all 0.15s ease',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '0.02em',
                     '&:hover': {
-                      backgroundColor: '#25262B',
-                      borderColor: '#5C5F66',
-                      transform: 'scale(1.02)',
+                      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                      borderColor: 'rgba(59, 130, 246, 0.2)',
+                      color: '#e2e8f0',
                     },
-                    '&:active': {
-                      transform: 'scale(0.98)',
-                    }
                   }
                 }}
               >
@@ -174,20 +177,19 @@ const AlertDialog: React.FC = () => {
               styles={{
                 root: {
                   borderRadius: 0,
-                  backgroundColor: '#373A40',
-                  border: '1px solid #373A40',
-                  color: '#C1C2C5',
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  overflow: 'hidden',
+                  backgroundColor: '#3b82f6',
+                  border: '1px solid #3b82f6',
+                  color: '#ffffff',
+                  transition: 'all 0.15s ease',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 0 8px rgba(59, 130, 246, 0.3)',
                   '&:hover': {
-                    backgroundColor: '#5C5F66',
-                    borderColor: '#5C5F66',
-                    transform: 'scale(1.02)',
+                    backgroundColor: '#1e40af',
+                    borderColor: '#1e40af',
+                    boxShadow: '0 0 12px rgba(59, 130, 246, 0.4)',
                   },
-                  '&:active': {
-                    transform: 'scale(0.98)',
-                  }
                 }
               }}
             >

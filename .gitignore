@@ -24,5 +24,10 @@ documentation/STATEBAGS_API.md
 documentation/WEAPONS_API.md
 documentation/README.md
 documentation/README.md
-
+docs/*
 FLOW_ANALYSIS.md
+_config.yml
+scripts/generate-docs-index.js
+web/package.json
+web/vite.config.docs.mjs
+web/package.json

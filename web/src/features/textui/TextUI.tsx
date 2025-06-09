@@ -22,38 +22,36 @@ const useStyles = createStyles((theme, params: { position?: TextUiPosition }) =>
       params.position === 'left-center' ? 'flex-start' : 'center',
   },
   container: {
-    fontSize: 14,
-    padding: 16,
+    fontSize: 13,
+    padding: 12,
     margin: 8,
-    backgroundColor: '#25262B',
-    color: '#C1C2C5',
+    backgroundColor: 'rgba(18, 18, 18, 0.95)',
+    color: '#e2e8f0',
     fontFamily: 'Roboto',
     fontWeight: 400,
-    letterSpacing: '0.01em',
+    letterSpacing: '0.02em',
     lineHeight: 1.4,
     borderRadius: 0,
-    border: '1px solid #373A40',
-    boxShadow: 'inset 0 1px 0 rgba(0, 0, 0, 0.05)',
+    border: '1px solid rgba(59, 130, 246, 0.1)',
     position: 'relative',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.15s ease',
     overflow: 'hidden',
-    minWidth: 200,
-    maxWidth: 400,
+    minWidth: 180,
+    maxWidth: 350,
     '&::before': {
       content: '""',
       position: 'absolute',
       top: 0,
       left: 0,
-      width: '3px',
+      width: '2px',
       height: '100%',
-      background: 'linear-gradient(180deg, #5C5F66, #373A40)',
+      background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.8), rgba(59, 130, 246, 0.3))',
     },
     '&:hover': {
-      backgroundColor: '#2C2E33',
-      borderColor: '#5C5F66',
-      transform: 'translateY(-1px)',
+      backgroundColor: 'rgba(26, 26, 26, 0.95)',
+      borderColor: 'rgba(59, 130, 246, 0.2)',
       '&::before': {
-        background: 'linear-gradient(180deg, #C1C2C5, #5C5F66)',
+        background: 'linear-gradient(180deg, rgba(59, 130, 246, 1), rgba(59, 130, 246, 0.5))',
       }
     },
     '& p': {
@@ -62,30 +60,30 @@ const useStyles = createStyles((theme, params: { position?: TextUiPosition }) =>
     },
     '& strong': {
       fontWeight: 500,
-      color: '#A6A7AB',
+      color: '#e2e8f0',
     },
     '& code': {
       fontFamily: 'Roboto Mono',
       fontSize: '0.9em',
       padding: '2px 4px',
-      background: '#1A1B1E',
-      border: '1px solid #373A40',
+      background: 'rgba(10, 10, 10, 0.8)',
+      border: '1px solid rgba(59, 130, 246, 0.1)',
       letterSpacing: '0.05em',
+      borderRadius: 0,
     }
   },
   iconContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 24,
-    height: 24,
-    border: '1px solid #373A40',
-    backgroundColor: '#1A1B1E',
-    transition: 'all 0.2s ease',
+    minWidth: 20,
+    height: 20,
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(10, 10, 10, 0.8)',
+    transition: 'all 0.15s ease',
     '&:hover': {
-      backgroundColor: '#25262B',
-      borderColor: '#5C5F66',
-      transform: 'scale(1.05)',
+      backgroundColor: 'rgba(18, 18, 18, 0.9)',
+      borderColor: 'rgba(59, 130, 246, 0.2)',
     }
   }
 }));
@@ -123,7 +121,7 @@ const TextUI: React.FC = () => {
                     icon={data.icon}
                     fixedWidth
                     animation={data.iconAnimation}
-                    color={data.iconColor || '#C1C2C5'}
+                    color={data.iconColor || '#64748b'}
                   />
                 </Box>
               )}

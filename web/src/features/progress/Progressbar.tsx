@@ -8,22 +8,12 @@ import type { ProgressbarProps } from '../../typings';
 const useStyles = createStyles((theme) => ({
   container: {
     width: 350,
-    height: 45,
-    borderRadius: 0,
-    backgroundColor: '#25262B',
-    border: '1px solid #373A40',
-    overflow: 'hidden',
+    height: 35,
     position: 'relative',
-    boxShadow: 'inset 0 1px 0 rgba(0, 0, 0, 0.05)',
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: '1px',
-      background: 'linear-gradient(90deg, transparent, #5C5F66, transparent)',
-    }
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   wrapper: {
     width: '100%',
@@ -34,43 +24,62 @@ const useStyles = createStyles((theme) => ({
     bottom: 0,
     position: 'absolute',
   },
-  bar: {
+  labelWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    zIndex: 2,
+  },
+  label: {
+    fontSize: 21,
+    fontWeight: 500,
+    color: '#e2e8f0',
+    letterSpacing: '0.025em',
+    fontFamily: 'Roboto',
+    textAlign: 'center',
+  },
+  progressTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    backgroundColor: '#252525',
+    borderRadius: 1,
+
+    overflow: 'hidden',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '100%',
+      background: 'linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.1) 40%, rgba(255, 255, 255, 0.2) 50%, rgba(59, 130, 246, 0.1) 60%, transparent 100%)',
+    }
+  },
+  progressBar: {
     height: '100%',
-    backgroundColor: '#373A40',
+    backgroundColor: '#3b82f6',
     position: 'relative',
-    transition: 'background-color 0.2s ease',
+    transition: 'width 0.2s ease-out',
+    boxShadow: '0 0 4px rgba(59, 130, 246, 0.3)',
     '&::after': {
       content: '""',
       position: 'absolute',
       top: 0,
-      right: 0,
+      right: -1,
       width: '2px',
       height: '100%',
-      background: '#C1C2C5',
-      boxShadow: '0 0 4px rgba(193, 194, 197, 0.3)',
+      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(59, 130, 246, 0.6) 50%, rgba(255, 255, 255, 0.8) 100%)',
+      boxShadow: '0 0 2px rgba(255, 255, 255, 0.5)',
+      borderRadius: '1px',
     }
-  },
-  labelWrapper: {
-    position: 'absolute',
-    display: 'flex',
-    width: 350,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  label: {
-    maxWidth: 320,
-    padding: 8,
-    textOverflow: 'ellipsis',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    fontSize: 14,
-    fontWeight: 500,
-    color: '#C1C2C5',
-    letterSpacing: '0.02em',
-    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-    fontFamily: 'Roboto',
   },
 }));
 
@@ -96,14 +105,16 @@ const Progressbar: React.FC = () => {
             <Box className={classes.labelWrapper}>
               <Text className={classes.label}>{label}</Text>
             </Box>
-            <Box
-              className={classes.bar}
-              onAnimationEnd={() => setVisible(false)}
-              sx={{
-                animation: 'progress-bar linear',
-                animationDuration: `${duration}ms`,
-              }}
-            />
+            <Box className={classes.progressTrack}>
+              <Box
+                className={classes.progressBar}
+                onAnimationEnd={() => setVisible(false)}
+                sx={{
+                  animation: 'progress-bar-minimal linear',
+                  animationDuration: `${duration}ms`,
+                }}
+              />
+            </Box>
           </Box>
         </ScaleFade>
       </Box>
