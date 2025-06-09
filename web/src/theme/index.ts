@@ -3,17 +3,17 @@ import { MantineThemeOverride } from '@mantine/core';
 export const theme: MantineThemeOverride = {
   colorScheme: 'dark',
   fontFamily: 'Roboto',
-  shadows: { 
+  shadows: {
     sm: 'inset 0 1px 0 rgba(0, 0, 0, 0.05)',
     md: 'inset 0 2px 0 rgba(0, 0, 0, 0.1)',
-    xl: 'inset 0 3px 0 rgba(0, 0, 0, 0.15)'
+    xl: 'inset 0 3px 0 rgba(0, 0, 0, 0.15)',
   },
   radius: {
-    xs: 0,
-    sm: 0,
-    md: 0,
-    lg: 0,
-    xl: 0
+    xs: 1,
+    sm: 2,
+    md: 3,
+    lg: 4,
+    xl: 5,
   },
   colors: {
     dark: [
@@ -26,7 +26,7 @@ export const theme: MantineThemeOverride = {
       '#25262B',
       '#1A1B1E',
       '#141517',
-      '#101113'
+      '#101113',
     ],
     gray: [
       '#495057',
@@ -38,8 +38,8 @@ export const theme: MantineThemeOverride = {
       '#151619',
       '#0F1012',
       '#0A0B0C',
-      '#000000'
-    ]
+      '#000000',
+    ],
   },
   primaryColor: 'dark',
   components: {
@@ -85,7 +85,7 @@ export const theme: MantineThemeOverride = {
           },
           '&:hover::before': {
             left: '100%',
-          }
+          },
         },
       },
     },
@@ -112,13 +112,13 @@ export const theme: MantineThemeOverride = {
             width: '100%',
             height: '1px',
             background: 'linear-gradient(90deg, transparent, #5C5F66, transparent)',
-          }
+          },
         },
         body: {
           padding: '16px',
-          backgroundColor: '#1A1B1E'
-        }
-      }
+          backgroundColor: '#1A1B1E',
+        },
+      },
     },
     Input: {
       styles: {
@@ -139,9 +139,9 @@ export const theme: MantineThemeOverride = {
           '&:hover:not(:focus)': {
             borderColor: '#5C5F66',
             backgroundColor: '#2C2E33',
-          }
-        }
-      }
+          },
+        },
+      },
     },
     ThemeIcon: {
       styles: {
@@ -150,9 +150,9 @@ export const theme: MantineThemeOverride = {
           transition: 'all 0.2s ease',
           '&:hover': {
             transform: 'scale(1.05)',
-          }
-        }
-      }
+          },
+        },
+      },
     },
     Card: {
       styles: {
@@ -165,9 +165,9 @@ export const theme: MantineThemeOverride = {
           '&:hover': {
             backgroundColor: '#2C2E33',
             borderColor: '#5C5F66',
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   },
 };

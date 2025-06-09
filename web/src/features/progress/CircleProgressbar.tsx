@@ -1,9 +1,9 @@
 import React from 'react';
-import {createStyles, keyframes, RingProgress, Stack, Text, useMantineTheme} from '@mantine/core';
-import {useNuiEvent} from '../../hooks/useNuiEvent';
-import {fetchNui} from '../../utils/fetchNui';
+import { createStyles, keyframes, RingProgress, Stack, Text, useMantineTheme } from '@mantine/core';
+import { useNuiEvent } from '../../hooks/useNuiEvent';
+import { fetchNui } from '../../utils/fetchNui';
 import ScaleFade from '../../transitions/ScaleFade';
-import type {CircleProgressbarProps} from '../../typings';
+import type { CircleProgressbarProps } from '../../typings';
 
 // 33.5 is the r of the circle
 const progressCircle = keyframes({
@@ -19,6 +19,7 @@ const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; 
     position: 'absolute',
     display: 'flex',
     justifyContent: 'center',
+
     alignItems: 'center',
   },
   progress: {
@@ -88,7 +89,7 @@ const CircleProgressbar: React.FC = () => {
             <RingProgress
               size={90}
               thickness={7}
-              sections={[{ value: 0, color: '#C1C2C5' }]}
+              sections={[{ value: 2, color: ' rgba(59, 130, 246, 0.3)' }]}
               onAnimationEnd={() => setVisible(false)}
               className={classes.progress}
               label={<Text className={classes.value}>{value}%</Text>}

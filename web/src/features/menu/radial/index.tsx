@@ -17,45 +17,51 @@ const useStyles = createStyles((theme) => ({
     transform: 'translate(-50%, -50%)',
   },
   sector: {
-    fill: 'rgba(18, 18, 18, 0.85)',
-    color: '#e2e8f0',
-    stroke: 'rgba(59, 130, 246, 0.1)',
-    strokeWidth: 1,
-    transition: 'all 0.15s ease',
+    fill: 'rgba(13, 18, 30, 0.88)',
+    color: '#e8f0fe',
+    stroke: 'rgba(59, 130, 246, 0.25)',
+    strokeWidth: 1.5,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3))',
 
     '&:hover': {
-      fill: 'rgba(26, 26, 26, 0.9)',
+      fill: 'rgba(22, 35, 60, 0.92)',
       cursor: 'pointer',
-      stroke: 'rgba(59, 130, 246, 0.3)',
-      strokeWidth: 1,
+      stroke: 'rgba(96, 165, 250, 0.6)',
+      strokeWidth: 2,
+      filter: 'drop-shadow(0 4px 16px rgba(59, 130, 246, 0.2))',
       '> g > text, > g > svg > path': {
-        fill: '#e2e8f0',
+        fill: '#ffffff',
       },
     },
     '> g > text': {
-      fill: '#e2e8f0',
+      fill: '#e8f0fe',
       strokeWidth: 0,
       fontFamily: 'Roboto',
-      fontWeight: 400,
-      letterSpacing: '0.02em',
+      fontWeight: 500,
+      letterSpacing: '0.025em',
       fontSize: 11,
     },
   },
   backgroundCircle: {
-    fill: 'rgba(10, 10, 10, 0.9)',
-    stroke: 'rgba(59, 130, 246, 0.15)',
-    strokeWidth: 1,
+    fill: 'rgba(6, 11, 20, 0.94)',
+    stroke: 'rgba(59, 130, 246, 0.3)',
+    strokeWidth: 1.5,
+    filter: 'drop-shadow(0 0 20px rgba(0, 0, 0, 0.5))',
   },
   centerCircle: {
-    fill: 'rgba(18, 18, 18, 0.9)',
-    color: '#e2e8f0',
-    stroke: 'rgba(59, 130, 246, 0.2)',
-    strokeWidth: 1,
-    transition: 'all 0.15s ease',
+    fill: 'rgba(15, 23, 42, 0.92)',
+    color: '#e8f0fe',
+    stroke: 'rgba(96, 165, 250, 0.5)',
+    strokeWidth: 1.5,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))',
     '&:hover': {
       cursor: 'pointer',
-      fill: 'rgba(26, 26, 26, 0.95)',
-      stroke: 'rgba(59, 130, 246, 0.4)',
+      fill: 'rgba(30, 42, 68, 0.95)',
+      stroke: 'rgba(129, 187, 255, 0.8)',
+      strokeWidth: 2,
+      filter: 'drop-shadow(0 4px 16px rgba(59, 130, 246, 0.3))',
     },
   },
   centerIconContainer: {
@@ -64,11 +70,12 @@ const useStyles = createStyles((theme) => ({
     left: '50%',
     transform: 'translate(-50%, -50%)',
     pointerEvents: 'none',
-    transition: 'all 0.15s ease',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   centerIcon: {
-    color: '#e2e8f0',
-    opacity: 0.8,
+    color: '#e8f0fe',
+    opacity: 0.9,
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
   },
 }));
 
@@ -223,16 +230,16 @@ const RadialMenu: React.FC = () => {
                     <text
                       x={iconX}
                       y={iconY + (splitTextIntoLines(item.label, 15).length > 2 ? 15 : 28)}
-                      fill="#C1C2C5"
+                      fill="#e8f0fe"
                       textAnchor="middle"
                       fontSize={calculateFontSize(item.label)}
                       pointerEvents="none"
                       lengthAdjust="spacingAndGlyphs"
                       fontFamily="Roboto"
-                      fontWeight="400"
+                      fontWeight="500"
                       style={{
-                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-                        letterSpacing: '0.01em'
+                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.6)',
+                        letterSpacing: '0.025em',
                       }}
                     >
                       {splitTextIntoLines(item.label, 15).map((line, index) => (
@@ -266,7 +273,7 @@ const RadialMenu: React.FC = () => {
               icon={!menu.sub && menu.page < 2 ? 'xmark' : 'arrow-rotate-left'}
               fixedWidth
               className={classes.centerIcon}
-              color="#C1C2C5"
+              color="#e8f0fe"
               size="2x"
             />
           </div>
