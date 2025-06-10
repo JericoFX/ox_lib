@@ -32,3 +32,6 @@ web/package.json
 web/vite.config.docs.mjs
 web/package.json
 css_para_no_olviarme_de_los_colores.md
+documentation/NETWORK_API.md
+documentation/PICKUPS_API.md
+test_streaming_audio.lua

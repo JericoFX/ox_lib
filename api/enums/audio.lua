@@ -11,7 +11,7 @@ audio.DEFAULT_SOUND_SET = "HUD_FRONTEND_DEFAULT_SOUNDSET"
 audio.SOUND_SETS = {
     DEFAULT = "HUD_FRONTEND_DEFAULT_SOUNDSET",
     PHONE = "PHONE_SOUNDSET",
-    WEAPON = "WEAPONS_SOUNDSET", 
+    WEAPON = "WEAPONS_SOUNDSET",
     VEHICLE = "VEHICLES_SOUNDSET",
     RADIO = "RADIO_SOUNDSET",
     UI = "DLC_HEIST_FLEECA_SOUNDSET",
@@ -23,27 +23,27 @@ audio.SOUND_SETS = {
 audio.SOUNDS = {
     -- UI Sounds
     SELECT = "SELECT",
-    BACK = "BACK", 
+    BACK = "BACK",
     ERROR = "ERROR",
     SUCCESS = "CONTINUE",
     CANCEL = "CANCEL",
-    
+
     -- Phone Sounds
     PHONE_RING = "Remote_Ring",
     PHONE_PICKUP = "Menu_Accept",
     PHONE_HANGUP = "Phone_SoundSet_Michael",
-    
+
     -- Weapon Sounds
     WEAPON_RELOAD = "WEAPON_RELOAD",
     WEAPON_EMPTY = "DRY_FIRE",
     WEAPON_SWITCH = "WEAPON_SWITCH",
-    
+
     -- Vehicle Sounds
     ENGINE_START = "ENGINE_START",
     ENGINE_STOP = "ENGINE_STOP",
     HORN = "HORN",
     BRAKE = "BRAKE",
-    
+
     -- World Sounds
     EXPLOSION = "EXPLOSION",
     GLASS_BREAK = "GLASS_BREAK",
@@ -83,4 +83,70 @@ audio.FADE_TYPES = {
     EASE_IN_OUT = "ease_in_out"
 }
 
-return audio 
+-- Streaming audio references (common native audio refs)
+audio.AUDIO_REFS = {
+    -- Common audio references for streaming
+    DEFAULT = "",
+    HUD_GLOBAL_SOUNDSET = "HUD_GLOBAL_SOUNDSET",
+    DIALOGUE_SOUNDSET = "DIALOGUE_SOUNDSET",
+    PHONE_SOUNDSET = "PHONE_SOUNDSET",
+    PAIN_SOUNDSET = "PAIN_SOUNDSET",
+    AMBIENT_SOUNDSET = "AMBIENT_SOUNDSET",
+    WEAPON_SOUNDSET = "WEAPONS_SOUNDSET",
+    VEHICLE_SOUNDSET = "VEHICLES_SOUNDSET",
+
+    -- Police/Emergency
+    POLICE_SCANNER = "POLICE_SCANNER_SOUNDS",
+    SCANNER_AUDIO = "SCANNER_AUDIO",
+
+    -- UI Related
+    HUD_FRONTEND = "HUD_FRONTEND_DEFAULT_SOUNDSET",
+    FRONTEND_MP = "DLC_HEIST_FLEECA_SOUNDSET",
+
+    -- Character voices and speech
+    SPEECH_PARAMS = "SPEECH_PARAMS",
+
+    -- Custom/Modded audio refs placeholder
+    CUSTOM = "CUSTOM_SOUNDS"
+}
+
+-- Common audio banks for streaming
+audio.AUDIO_BANKS = {
+    -- Default banks
+    SCRIPT = "SCRIPT",
+    INTERACTIVE_MUSIC = "INTERACTIVE_MUSIC",
+
+    -- Character specific
+    MICHAEL = "MICHAEL_SOUNDS",
+    FRANKLIN = "FRANKLIN_SOUNDS",
+    TREVOR = "TREVOR_SOUNDS",
+
+    -- Mission/Heist specific
+    FLEECA_HEIST = "DLC_HEIST_FLEECA_SOUNDSET",
+    CASINO_HEIST = "DLC_CASINO_SOUNDSET",
+
+    -- Custom/Modded banks placeholder
+    CUSTOM = "CUSTOM_AUDIO_BANK"
+}
+
+-- Streaming audio quality settings
+audio.STREAMING_QUALITY = {
+    LOW = {
+        bitrate = 32000,
+        sample_rate = 22050
+    },
+    MEDIUM = {
+        bitrate = 64000,
+        sample_rate = 32000
+    },
+    HIGH = {
+        bitrate = 128000,
+        sample_rate = 44100
+    },
+    ULTRA = {
+        bitrate = 256000,
+        sample_rate = 48000
+    }
+}
+
+return audio

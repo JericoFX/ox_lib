@@ -801,6 +801,214 @@ lib.playScenePreset("bank_hack", {
 })
 ```
 
+---
+
+## 🎵 **NEW: Streaming Audio API**
+
+ox_lib Extended introduces a powerful **Streaming Audio API** that provides native audio streaming functionality for custom audio files (.awc) and GTA V sounds through the game's streaming system.
+
+### **Credits**
+
+This implementation is **inspired by and compatible with mana_audio** by **Manason**.
+
+**Credits to:**
+
+- **Manason** (creator of mana_audio)
+- PrinceAlbert, Demi-Automatic, ChatDisabled, Joe Szymkowicz, and Zoo
+
+**Original repository:** https://github.com/Manason/mana_audio
+
+### **The Problem It Solves**
+
+```lua
+-- Before: No native streaming audio support in ox_lib
+-- Had to use separate resources like interact-sound or mana_audio
+-- Multiple dependencies and inconsistent APIs
+
+-- After: Native streaming audio integrated into ox_lib
+lib.audio:playStreamingSound({
+    audioBank = 'custom_sounds',     -- Your custom .awc file
+    audioName = 'my_custom_sound',   -- Custom audio from your files
+    audioRef = 'CUSTOM_SOUNDS'       -- Custom audio reference
+})
+```
+
+### **Key Features**
+
+- ✅ **Custom Audio Streaming** - Stream custom .awc audio files natively
+- ✅ **mana_audio Compatible** - Easy migration with similar API
+- ✅ **3D Positional Audio** - Entity and coordinate-based audio
+- ✅ **Range Control** - Specify hearing range for coordinate-based audio
+- ✅ **Random Selection** - Array support for random audio selection
+- ✅ **Automatic Management** - Auto-load and cleanup of audio banks
+- ✅ **Server Control** - Play audio from server to specific/all clients
+- ✅ **Native Integration** - Seamlessly integrated with ox_lib's audio system
+
+### **Client-Side Functions**
+
+```lua
+-- Play streaming sound (2D)
+local audioId = lib.audio:playStreamingSound({
+    audioBank = 'custom_sounds',           -- Custom .awc file
+    audioName = 'notification_sound',      -- Audio defined in .dat54.rel
+    audioRef = 'CUSTOM_SOUNDS'             -- Custom reference
+})
+
+-- Play sound from entity (3D)
+lib.audio:playStreamingSoundFromEntity({
+    audioBank = 'vehicle_sounds',
+    audioName = 'engine_custom',
+    audioRef = 'VEHICLE_CUSTOM',
+    entity = PlayerPedId()
+})
+
+-- Play sound from coordinates (3D with range)
+lib.audio:playStreamingSoundFromCoords({
+    audioBank = 'ambient_sounds',
+    audioName = 'forest_ambiance',
+    audioRef = 'AMBIENT_CUSTOM',
+    coords = vector3(100, 200, 30),
+    range = 25.0
+})
+
+-- Random sound selection
+lib.audio:playStreamingSound({
+    audioBank = 'notification_sounds',
+    audioName = {'success', 'warning', 'error'}, -- Randomly picks one
+    audioRef = 'NOTIFICATION_SOUNDS'
+})
+```
+
+### **Server-Side Functions**
+
+```lua
+-- Play to all clients
+lib.streamingAudio.playSound(-1, {
+    audioBank = 'server_sounds',
+    audioName = 'announcement',
+    audioRef = 'SERVER_SOUNDS'
+})
+
+-- Play to specific client
+lib.streamingAudio.playSound(playerId, {
+    audioBank = 'personal_sounds',
+    audioName = 'level_up',
+    audioRef = 'PERSONAL_SOUNDS'
+})
+
+-- Play from entity to all clients
+lib.streamingAudio.playSoundFromEntity({
+    audioBank = 'event_sounds',
+    audioName = 'explosion',
+    audioRef = 'EVENT_SOUNDS',
+    entity = GetPlayerPed(playerId)
+})
+
+-- Play from coordinates to clients in range
+lib.streamingAudio.playSoundFromCoords({
+    audioBank = 'location_sounds',
+    audioName = 'alarm',
+    audioRef = 'LOCATION_SOUNDS',
+    coords = vector3(100, 200, 30),
+    range = 50.0
+})
+```
+
+### **Audio Bank Management**
+
+```lua
+-- Load custom audio bank
+local success = lib.audio:requestAudioBank('custom_sounds', 15000)
+if success then
+    -- Use the audio bank
+    lib.audio:playStreamingSound({
+        audioBank = 'custom_sounds',
+        audioName = 'my_sound',
+        audioRef = 'CUSTOM_SOUNDS'
+    })
+
+    -- Release when done (automatic cleanup also available)
+    lib.audio:releaseAudioBank('custom_sounds')
+end
+```
+
+### **Custom Audio File Structure**
+
+For custom audio files, organize your resource like this:
+
+```
+your_resource/
+├── audiodirectory/
+│   ├── custom_sounds.awc          # Your audio container
+│   └── notification_sounds.awc    # Another audio container
+├── data/
+│   ├── custom_sounds.dat54.rel    # SimpleSounds definitions
+│   └── notification_sounds.dat54.rel
+├── fxmanifest.lua
+├── client.lua
+└── server.lua
+```
+
+Add to your `fxmanifest.lua`:
+
+```lua
+-- Audio files
+files {
+    'audiodirectory/*.awc',
+    'data/*.dat54.rel'
+}
+
+-- Streaming configuration
+data_file 'AUDIO_WAVEPACK' 'audiodirectory'
+data_file 'AUDIO_SOUNDDATA' 'data'
+```
+
+### **Migration from mana_audio**
+
+```lua
+-- Before (mana_audio)
+exports.mana_audio:PlaySound({
+    audioBank = 'myAudioBank',
+    audioName = 'myAudioName',
+    audioRef = 'myAudioRef'
+})
+
+-- After (ox_lib)
+lib.audio:playStreamingSound({
+    audioBank = 'myAudioBank',
+    audioName = 'myAudioName',
+    audioRef = 'myAudioRef'
+})
+```
+
+### **Advanced Examples**
+
+```lua
+-- Notification system with custom sounds
+local function playNotificationSound(type)
+    local sounds = {
+        success = 'success_chime',
+        error = 'error_buzz',
+        warning = 'warning_beep'
+    }
+
+    lib.audio:playStreamingSound({
+        audioBank = 'notification_sounds',
+        audioName = sounds[type],
+        audioRef = 'NOTIFICATION_SOUNDS'
+    })
+end
+
+-- Server event system
+RegisterCommand('server_announcement', function(source)
+    lib.streamingAudio.playSound(-1, {
+        audioBank = 'server_events',
+        audioName = 'announcement_horn',
+        audioRef = 'SERVER_EVENTS'
+    })
+end)
+```
+
 ### **🎯 Key Advantages**
 
 #### **Animation System**

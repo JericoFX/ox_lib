@@ -285,5 +285,161 @@ function Audio:_startCleanupThread()
     end)
 end
 
+-- =====================================
+-- STREAMING NATIVE AUDIO FUNCTIONS
+-- =====================================
+
+--[[
+    Streaming Audio Functions
+
+    Inspired by and compatible with mana_audio by Manason
+    Original repository: https://github.com/Manason/mana_audio
+
+    Credits to:
+    - Manason (mana_audio creator)
+    - PrinceAlbert, Demi-Automatic, ChatDisabled, Joe Szymkowicz, and Zoo
+
+    These functions provide native audio streaming for custom audio files (.awc)
+    and GTA V native sounds through the game's streaming system.
+]]
+
+---Play a streaming sound not located within the 3D world
+---Supports custom audio files loaded through .awc containers
+---@param options table Options table with audioBank, audioName, and audioRef
+---@return number|nil audioId Generated audio ID for tracking
+function Audio:playStreamingSound(options)
+    if not options.audioBank or not options.audioName or not options.audioRef then
+        lib.print.warn('Audio:playStreamingSound: Missing required parameters')
+        return
+    end
+
+    self.private.audioId = self.private.audioId + 1
+    local audioId = self.private.audioId
+
+    lib.requestAudioBank(options.audioBank, 10000)
+
+    PlaySound(audioId, options.audioName, options.audioRef, false, 0, false)
+
+    Audio.activeAudioSources[audioId] = {
+        id = audioId,
+        audioBank = options.audioBank,
+        audioName = options.audioName,
+        audioRef = options.audioRef,
+        startTime = GetGameTimer(),
+        isStreaming = true,
+        instance = self
+    }
+
+    return audioId
+end
+
+---Play a streaming sound originating from an entity
+---Supports custom audio files loaded through .awc containers
+---@param options table Options table with audioBank, audioName, audioRef, and entity
+---@return number|nil audioId Generated audio ID for tracking
+function Audio:playStreamingSoundFromEntity(options)
+    if not options.audioBank or not options.audioName or not options.audioRef or not options.entity then
+        lib.print.warn('Audio:playStreamingSoundFromEntity: Missing required parameters')
+        return
+    end
+
+    self.private.audioId = self.private.audioId + 1
+    local audioId = self.private.audioId
+
+    lib.requestAudioBank(options.audioBank, 10000)
+
+    PlaySoundFromEntity(audioId, options.audioName, options.entity, options.audioRef, false, 0)
+
+    Audio.activeAudioSources[audioId] = {
+        id = audioId,
+        audioBank = options.audioBank,
+        audioName = options.audioName,
+        audioRef = options.audioRef,
+        entity = options.entity,
+        startTime = GetGameTimer(),
+        isStreaming = true,
+        isEntity = true,
+        instance = self
+    }
+
+    return audioId
+end
+
+---Play a streaming sound originating from coordinates
+---Supports custom audio files loaded through .awc containers
+---@param options table Options table with audioBank, audioName, audioRef, coords, and range
+---@return number|nil audioId Generated audio ID for tracking
+function Audio:playStreamingSoundFromCoords(options)
+    if not options.audioBank or not options.audioName or not options.audioRef or not options.coords then
+        lib.print.warn('Audio:playStreamingSoundFromCoords: Missing required parameters')
+        return
+    end
+
+    self.private.audioId = self.private.audioId + 1
+    local audioId = self.private.audioId
+    local range = options.range or 10
+
+    lib.requestAudioBank(options.audioBank, 10000)
+
+    PlaySoundFromCoord(audioId, options.audioName, options.coords.x, options.coords.y, options.coords.z, options.audioRef, false, range, false)
+
+    Audio.activeAudioSources[audioId] = {
+        id = audioId,
+        audioBank = options.audioBank,
+        audioName = options.audioName,
+        audioRef = options.audioRef,
+        coords = options.coords,
+        range = range,
+        startTime = GetGameTimer(),
+        isStreaming = true,
+        is3D = true,
+        instance = self
+    }
+
+    return audioId
+end
+
+-- =====================================
+-- STREAMING AUDIO EVENT HANDLERS
+-- =====================================
+
+RegisterNetEvent('ox_lib:streamingAudio:playSound', function(options)
+    lib.audio:playStreamingSound(options)
+end)
+
+RegisterNetEvent('ox_lib:streamingAudio:playSoundFromEntity', function(options)
+    lib.audio:playStreamingSoundFromEntity(options)
+end)
+
+RegisterNetEvent('ox_lib:streamingAudio:playSoundFromCoords', function(options)
+    lib.audio:playStreamingSoundFromCoords(options)
+end)
+
+-- =====================================
+-- STREAMING AUDIO UTILITY FUNCTIONS
+-- =====================================
+
+---Request and load an audio bank with error handling
+---@param audioBank string Audio bank name
+---@param timeout? number Timeout in milliseconds (default: 10000)
+---@return boolean success Whether the bank was loaded successfully
+function Audio:requestAudioBank(audioBank, timeout)
+    local success = pcall(function()
+        lib.requestAudioBank(audioBank, timeout or 10000)
+    end)
+
+    if not success then
+        lib.print.warn(('Failed to load audio bank: %s'):format(audioBank))
+    end
+
+    return success
+end
+
+---Release an audio bank
+---@param audioBank string Audio bank name
+function Audio:releaseAudioBank(audioBank)
+    ReleaseScriptAudioBank()
+end
+
 -- Create default instance
 lib.audio = Audio:new()
