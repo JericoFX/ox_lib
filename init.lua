@@ -100,6 +100,7 @@ local function loadModule(self, module)
     if chunk then
         print('^0========================================')
         print('^2[OX_LIB WRAPPER LOADER]^0')
+        print('^3Resource: ^5' .. cache.resource)
         print('^3Módulo: ^5' .. module)
         print('^3Contexto: ^5' .. context)
         print('^3Archivo: ^5' .. wrapperPath)
@@ -290,7 +291,6 @@ end
 _ENV.lib = lib
 _ENV.cache = cache
 _ENV.require = lib.require
-
 local notifyEvent = ('__ox_notify_%s'):format(cache.resource)
 
 if context == 'client' then
