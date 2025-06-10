@@ -6,7 +6,7 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 
 name 'ox_lib'
 author 'Overextended'
-version '3.30.4'
+version '3.30.5'
 license 'LGPL-3.0-or-later'
 repository 'https://github.com/JericoFX/ox_lib'
 description 'A library of shared functions to utilise in other resources.'
@@ -49,6 +49,7 @@ client_scripts {
 }
 
 server_scripts {
+    '@oxmysql/lib/MySQL.lua',
     'imports/callback/server.lua',
     'imports/getFilesInDirectory/server.lua',
     'resource/**/server.lua',
