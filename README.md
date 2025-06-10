@@ -511,6 +511,326 @@ lib.events.emitServer('player:action', {
 
 ---
 
+## 🎭 **NEW: Advanced Animation System & NetworkScenes**
+
+ox_lib Extended introduces two powerful animation systems that revolutionize how animations and cinematic scenes work in FiveM.
+
+### **🎮 Advanced Animation System**
+
+The advanced animation system extends the basic `lib.playAnim()` with props, callbacks, facial animations, and intelligent management.
+
+#### **Basic vs Advanced Comparison**
+
+```lua
+-- Before: Basic animations
+lib.playAnim(ped, "mp_player_intdrink", "loop_bottle")
+-- Result: Simple animation, no props, no callbacks
+
+-- After: Advanced animations with everything included
+local animId = lib.playAnimAdvanced(ped, "drinking", {
+    onStart = function() print("Started drinking") end,
+    onComplete = function() print("Finished drinking") end
+})
+-- Result: Animation + beer bottle prop + callbacks + auto-cleanup
+```
+
+#### **Available Animation Presets**
+
+```lua
+-- Built-in presets with props and perfect positioning
+lib.playAnimAdvanced(ped, "drinking")      -- Beer bottle automatically attached
+lib.playAnimAdvanced(ped, "phone_call")    -- Phone prop with correct positioning
+lib.playAnimAdvanced(ped, "smoking")       -- Cigarette with realistic attachment
+lib.playAnimAdvanced(ped, "clipboard")     -- Clipboard for business/work scenarios
+lib.playAnimAdvanced(ped, "coffee")        -- Coffee cup for casual interactions
+lib.playAnimAdvanced(ped, "notepad")       -- Notepad for writing/notes
+lib.playAnimAdvanced(ped, "tablet")        -- Tablet for modern tech usage
+lib.playAnimAdvanced(ped, "newspaper")     -- Newspaper for reading scenarios
+```
+
+#### **Custom Animation Configurations**
+
+```lua
+-- Create custom animations with props and callbacks
+local animId = lib.playAnimAdvanced(ped, {
+    dict = "mp_player_intdrink",
+    name = "loop_bottle",
+    flags = 49,
+    duration = 10000,
+
+    -- Auto-spawned props with precise attachment
+    props = {
+        {
+            model = `prop_beer_bottle`,
+            bone = 18905,  -- Right hand
+            offset = vec3(0.12, 0.028, 0.001),
+            rotation = vec3(5.0, 5.0, -180.5)
+        }
+    },
+
+    -- Facial animations for more realism
+    facial = {
+        dict = "facials@mood",
+        name = "happy"
+    },
+
+    -- Complete callback system
+    callbacks = {
+        onStart = function(ped, animId)
+            print("Animation started:", animId)
+        end,
+        onProgress = function(ped, animId, progress)
+            if progress > 0.5 then
+                -- Do something at 50% completion
+            end
+        end,
+        onComplete = function(ped, animId)
+            print("Animation completed")
+            -- Props are automatically cleaned up
+        end,
+        onInterrupt = function(ped, animId, reason)
+            print("Animation interrupted:", reason)
+        end
+    }
+})
+
+-- Control animations
+lib.stopAnim(animId)                    -- Stop specific animation
+lib.stopAllAnims(ped)                  -- Stop all animations on ped
+local isPlaying = lib.isPlayingAnim(ped) -- Check if any animation is playing
+```
+
+#### **Animation Sequences & Network Sync**
+
+```lua
+-- Play animations in sequence automatically
+lib.playAnimSequence(ped, {
+    "drinking",           -- First: drinking animation
+    "phone_call",         -- Then: phone call
+    "smoking"             -- Finally: smoking
+}, {
+    loop = false,
+    callbacks = {
+        onComplete = function() print("All animations completed") end
+    }
+})
+
+-- Network synchronized animations for multiple players
+lib.playNetworkAnim({
+    [ped1] = "drinking",
+    [ped2] = "smoking",
+    [vehicle] = {
+        dict = "anim@heists@heist_corona@team_idles@male_a",
+        name = "idle"
+    }
+}, {
+    syncToAll = true,  -- Sync to all players in range
+    authority = source -- Server controls the timing
+})
+```
+
+### **🎬 NetworkScenes - Cinematic Scene System**
+
+NetworkScenes handle complex, multi-entity synchronized scenes with cameras, perfect for heists, cutscenes, and interactive scenarios.
+
+#### **Why NetworkScenes?**
+
+```lua
+-- Before: Complex manual scene setup
+local scene = NetworkCreateSynchronisedScene(x, y, z, ...)
+NetworkAddPedToSynchronisedScene(ped, scene, dict, anim, ...)
+NetworkAddEntityToSynchronisedScene(prop, scene, dict, anim, ...)
+NetworkAddSynchronisedSceneCamera(scene, dict, cam)
+NetworkStartSynchronisedScene(scene)
+-- Manually track phases, cleanup, etc.
+-- Result: 50+ lines of complex code prone to errors
+
+-- After: Simple, powerful scene system
+lib.playScene({
+    position = keypadCoords,
+    entities = {
+        {entity = ped, type = "ped", animDict = "dict", animName = "hack"},
+        {entity = usb, type = "object", animDict = "dict", animName = "usb_hack"}
+    },
+    camera = {
+        animDict = "dict",
+        animName = "hack_camera",
+        gracefulExit = true
+    },
+    callbacks = {
+        onComplete = function() print("Hacking complete!") end
+    }
+})
+-- Result: 15 lines, automatic management, no cleanup needed
+```
+
+#### **Simple Scene Examples**
+
+```lua
+-- Basic scene with automatic camera
+local sceneId = lib.playScene({
+    position = GetEntityCoords(PlayerPedId()),
+    entities = {
+        {
+            entity = PlayerPedId(),
+            type = "ped",
+            animDict = "anim@scripted@heist@ig25_beach@male@",
+            animName = "action"
+        }
+    },
+    camera = {
+        animDict = "anim@scripted@heist@ig25_beach@male@",
+        animName = "action_camera",
+        gracefulExit = true,
+        exitBlendTime = 2.0
+    }
+})
+
+-- Multi-entity scene (heist style)
+lib.playScene({
+    position = drillLocation,
+    entities = {
+        {entity = ped, type = "ped", animDict = "heist_drill", animName = "intro"},
+        {entity = drill, type = "object", animDict = "heist_drill", animName = "intro_drill"},
+        {entity = bag, type = "object", animDict = "heist_drill", animName = "intro_bag"}
+    },
+    holdLastFrame = true,  -- Hold at the end for smooth transitions
+    callbacks = {
+        onStart = function() print("Drilling started") end,
+        onComplete = function() print("Ready for next phase") end
+    }
+})
+```
+
+#### **Complex Scene Sequences**
+
+```lua
+-- Multi-phase scenes (like Cayo Perico gold grabbing)
+lib.playSceneSequence({
+    -- Phase 1: Entry
+    {
+        config = {
+            position = goldLocation,
+            holdLastFrame = true,
+            entities = {
+                {entity = ped, type = "ped", animDict = "gold_grab", animName = "enter"},
+                {entity = bag, type = "object", animDict = "gold_grab", animName = "enter_bag"}
+            }
+        },
+        waitForCompletion = true
+    },
+
+    -- Phase 2: Grabbing (with delay)
+    {
+        config = {
+            position = goldLocation,
+            entities = {
+                {entity = ped, type = "ped", animDict = "gold_grab", animName = "grab"},
+                {entity = bag, type = "object", animDict = "gold_grab", animName = "grab_bag"},
+                {entity = gold, type = "object", animDict = "gold_grab", animName = "grab_gold"}
+            }
+        },
+        delay = 1000  -- 1 second delay between phases
+    },
+
+    -- Phase 3: Exit
+    {
+        config = {
+            position = goldLocation,
+            entities = {
+                {entity = ped, type = "ped", animDict = "gold_grab", animName = "exit"},
+                {entity = bag, type = "object", animDict = "gold_grab", animName = "exit_bag"}
+            }
+        },
+        condition = function()
+            return grabbingComplete  -- Only proceed if condition is met
+        end
+    }
+}, {
+    onComplete = function()
+        DeleteObject(gold)  -- Cleanup after sequence
+        print("Gold grabbing sequence complete!")
+    end
+})
+```
+
+#### **Scene Control & Monitoring**
+
+```lua
+-- Create scene for manual control
+local sceneId = lib.createScene({
+    position = coords,
+    entities = {...}
+})
+
+-- Manual control
+lib.startScene(sceneId)
+lib.pauseScene(sceneId)          -- Pause the scene
+lib.resumeScene(sceneId, 1.5)    -- Resume at 1.5x speed
+lib.setSceneRate(sceneId, 0.5)   -- Slow motion effect
+
+-- Monitor scene progress
+local phase = lib.getScenePhase(sceneId)      -- 0.0 to 1.0
+local state = lib.getSceneState(sceneId)      -- "running", "paused", etc.
+local isRunning = lib.isSceneRunning(sceneId) -- boolean
+
+-- Stop when needed
+lib.stopScene(sceneId, "player_died")
+```
+
+#### **Scene Presets**
+
+```lua
+-- Register custom scene presets
+lib.registerScenePreset("bank_hack", {
+    mode = "sequence",
+    entities = {},  -- Will be filled when used
+    camera = {
+        animDict = "anim_heist@hs3f@ig1_hack_keypad@male@",
+        animName = "action_camera",
+        gracefulExit = true
+    }
+})
+
+-- Use presets with custom data
+lib.playScenePreset("bank_hack", {
+    position = keypadCoords,
+    entities = {
+        {entity = PlayerPedId(), type = "ped", animDict = "hack_dict", animName = "hack_anim"}
+    }
+})
+```
+
+### **🎯 Key Advantages**
+
+#### **Animation System**
+
+- ✅ **Zero Cleanup** - Props, timers, and resources cleaned automatically
+- ✅ **Preset Library** - 8+ ready-to-use animations with perfect props
+- ✅ **Network Sync** - Multi-player animation coordination
+- ✅ **Sequence Support** - Chain animations automatically
+- ✅ **Full Callbacks** - Complete lifecycle event handling
+- ✅ **Facial Animations** - Synchronized facial expressions
+
+#### **NetworkScenes**
+
+- ✅ **Multi-Entity** - Coordinate multiple peds, objects, and vehicles
+- ✅ **Camera Integration** - Cinematic camera work with graceful exits
+- ✅ **Phase Monitoring** - Real-time progress tracking
+- ✅ **Sequence Support** - Multi-phase scenes with conditions and delays
+- ✅ **Error Handling** - Robust validation and automatic recovery
+- ✅ **Memory Management** - No memory leaks or orphaned entities
+
+### **🚀 Performance Benefits**
+
+- **Lazy Loading** - Systems only load when first used
+- **Resource Pooling** - Efficient reuse of animation dictionaries
+- **Automatic Cleanup** - No memory leaks or performance degradation
+- **Optimized Callbacks** - Event system designed for high frequency updates
+- **Cache Integration** - Leverages ox_lib's native cache system
+
+---
+
 ## Installation (FOR TESTING ONLY)
 
 1. **⚠️ BACKUP YOUR SERVER FIRST ⚠️**

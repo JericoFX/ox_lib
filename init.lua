@@ -361,6 +361,35 @@ for i = 1, GetNumResourceMetadata(cache.resource, 'ox_lib') do
     end
 end
 
+-- Auto-load lazy functions for advanced animation and network scenes modules
+if context == 'client' then
+    -- Lazy loader for playAnimAdvanced
+    local original_playAnimAdvanced = lib.playAnimAdvanced
+    lib.playAnimAdvanced = function(...)
+        -- Load the actual module and auto-load all functions
+        local loader = original_playAnimAdvanced
+        if type(loader) == 'function' then
+            -- Call the loader to populate all lib functions
+            loader()
+        end
+        -- Now call the actual function
+        return lib.playAnimAdvanced(...)
+    end
+
+    -- Lazy loader for playScene (NetworkScenes)
+    local original_playScene = lib.playScene
+    lib.playScene = function(...)
+        -- Load the actual module and auto-load all functions
+        local loader = original_playScene
+        if type(loader) == 'function' then
+            -- Call the loader to populate all lib functions
+            loader()
+        end
+        -- Now call the actual function
+        return lib.playScene(...)
+    end
+end
+
 do
     local enumsPath = 'api/enums/init.lua'
     local enumsChunk = LoadResourceFile(ox_lib, enumsPath)
