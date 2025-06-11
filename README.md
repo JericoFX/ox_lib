@@ -25,9 +25,10 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.player` - Player management functions
 - `lib.task` - Task and animation utilities
 - `lib.vehicle` - Vehicle manipulation tools
-- `lib.enums` - Shared enumerations and constants
+- `lib.enums` - **NEW!** Comprehensive shared enumerations and constants
 - `lib.events` - **NEW!** Universal event system with automatic caching
 - `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
+- `lib.blips` - **NEW!** Enhanced blip management system with object-oriented approach
 
 ### 🌐 **Framework Wrappers**
 
@@ -164,6 +165,251 @@ add_ace group.helper tickets.manage allow
 # Assign players to groups
 add_principal identifier.license:YOUR_LICENSE_HERE group.admin
 add_principal identifier.license:MOD_LICENSE_HERE group.mod
+```
+
+---
+
+## 📝 **NEW: Comprehensive Enumerations System**
+
+The **Comprehensive Enumerations System** provides standardized constants and enumerations across all ox_lib APIs, ensuring consistency and reducing magic numbers throughout your codebase.
+
+### **Available Enumerations**
+
+ox_lib Extended includes the following enumeration modules:
+
+- **`lib.enums.vehicles`** - Vehicle-related constants (doors, windows, classes, colors, etc.)
+- **`lib.enums.weapons`** - Weapon hashes, categories, attachments, and ammo types
+- **`lib.enums.notifications`** - Notification types, positions, icons, and colors
+- **`lib.enums.animations`** - Animation dictionaries and names
+- **`lib.enums.tasks`** - Task-related constants and parameters
+- **`lib.enums.audio`** - Audio banks, sounds, and music constants
+- **`lib.enums.camera`** - Camera types and transition effects
+- **`lib.enums.damage`** - Damage types and severity levels
+- **`lib.enums.statebags`** - StateBag keys and value types
+- **`lib.enums.jobs`** - Job categories and role definitions
+- **`lib.enums.flags`** - Various flag constants and bitwise operations
+
+### **Example Usage**
+
+```lua
+-- Vehicle management with enums
+local vehicle = lib.vehicle.getCurrent()
+if vehicle then
+    -- Use enum instead of magic numbers
+    vehicle:setDoorState(lib.enums.vehicles.DOORS.FRONT_LEFT, true)
+    vehicle:setWindowState(lib.enums.vehicles.WINDOWS.FRONT_LEFT, false)
+
+    -- Check vehicle class
+    local vehicleClass = vehicle:getClass()
+    if vehicleClass == lib.enums.vehicles.CLASSES.EMERGENCY then
+        -- Handle emergency vehicle
+    end
+end
+
+-- Weapon management with enums
+local playerPed = cache.ped
+GiveWeaponToPed(playerPed, lib.enums.weapons.WEAPONS.COMBAT_PISTOL, 50, false, true)
+
+-- Add weapon attachments using enums
+GiveWeaponComponentToPed(playerPed,
+    lib.enums.weapons.WEAPONS.COMBAT_PISTOL,
+    lib.enums.weapons.ATTACHMENTS.SUPPRESSOR_LIGHT
+)
+
+-- Notification with standardized types and icons
+lib.notify({
+    type = lib.enums.notifications.TYPES.SUCCESS,
+    icon = lib.enums.notifications.ICONS.MONEY,
+    title = 'Payment Received',
+    description = 'You received $500',
+    position = lib.enums.notifications.POSITIONS.TOP_RIGHT,
+    duration = lib.enums.notifications.DURATION.MEDIUM
+})
+
+-- Blip creation with vehicle class enum
+local blip = lib.blips.createAtCoords(coords, {
+    sprite = lib.enums.vehicles.CLASSES.EMERGENCY + 50, -- Emergency vehicle blip
+    color = lib.enums.notifications.COLORS.POLICE
+})
+```
+
+### **Key Benefits**
+
+- **🔍 IntelliSense Support** - Full autocomplete and type checking
+- **📖 Self-Documenting Code** - Clear, readable constant names
+- **🛡️ Type Safety** - Reduced magic numbers and typos
+- **🎯 Consistency** - Standardized values across all APIs
+- **🔧 Maintainability** - Centralized constant management
+- **⚡ Performance** - Pre-compiled constants for optimal performance
+
+### **Vehicle Enums Example**
+
+```lua
+-- Available vehicle door constants
+lib.enums.vehicles.DOORS = {
+    FRONT_LEFT = 0,
+    FRONT_RIGHT = 1,
+    REAR_LEFT = 2,
+    REAR_RIGHT = 3,
+    HOOD = 4,
+    TRUNK = 5
+}
+
+-- Vehicle color constants
+lib.enums.vehicles.COLORS = {
+    BLACK = 0,
+    WHITE = 111,
+    RED = 27,
+    BLUE = 64,
+    -- ... and many more
+}
+
+-- Vehicle seat positions
+lib.enums.vehicles.SEATS = {
+    DRIVER = -1,
+    PASSENGER = 0,
+    REAR_LEFT = 1,
+    REAR_RIGHT = 2
+}
+```
+
+### **Weapons Enums Example**
+
+```lua
+-- Common weapon hashes
+lib.enums.weapons.WEAPONS = {
+    UNARMED = "WEAPON_UNARMED",
+    PISTOL = "WEAPON_PISTOL",
+    COMBAT_PISTOL = "WEAPON_COMBATPISTOL",
+    ASSAULT_RIFLE = "WEAPON_ASSAULTRIFLE",
+    -- ... complete weapon list
+}
+
+-- Weapon categories
+lib.enums.weapons.CATEGORIES = {
+    MELEE = "melee",
+    HANDGUN = "handgun",
+    ASSAULT_RIFLE = "assault_rifle",
+    -- ... all categories
+}
+```
+
+---
+
+## 🗺️ **NEW: Enhanced Blip Management System**
+
+The **Enhanced Blip Management System** provides a powerful object-oriented approach to blip creation and management with automatic cleanup and advanced functionality.
+
+### **The Problem It Solves**
+
+```lua
+-- Before: Manual blip management with potential memory leaks
+local blip = AddBlipForCoord(100.0, 200.0, 30.0)
+SetBlipSprite(blip, 1)
+SetBlipColour(blip, 2)
+SetBlipScale(blip, 1.0)
+BeginTextCommandSetBlipName("STRING")
+AddTextComponentString("My Location")
+EndTextCommandSetBlipName(blip)
+-- Result: Manual cleanup required, no centralized management
+```
+
+### **The Solution**
+
+```lua
+-- After: Object-oriented blip management
+local myBlip = lib.blips.createAtCoords(vector3(100.0, 200.0, 30.0), {
+    sprite = 1,
+    color = 2,
+    scale = 1.0,
+    label = "My Location",
+    shortRange = true
+})
+
+-- Easy management
+myBlip:setRoute(true, 3)
+myBlip:pulse()
+local coords = myBlip:getCoords()
+myBlip:remove() -- Automatic cleanup
+```
+
+### **Key Features**
+
+- **🎯 Object-Oriented Design** - Each blip is a manageable instance
+- **📍 Multiple Creation Methods** - Coordinates, entities, radius, and area blips
+- **⚙️ Advanced Options** - Comprehensive blip configuration
+- **🔧 Dynamic Updates** - Change blip properties after creation
+- **🗺️ Route Management** - Easy GPS route creation
+- **🔍 Search Functions** - Find blips by sprite or location
+- **🧹 Automatic Cleanup** - Proper memory management
+
+### **Available Methods**
+
+**Static Creation Methods:**
+
+```lua
+-- Create blip at coordinates
+lib.blips.createAtCoords(coords, options)
+
+-- Create blip for entity
+lib.blips.createForEntity(entity, options)
+
+-- Create radius blip
+lib.blips.createRadius(coords, radius, options)
+
+-- Get all blips of specific sprite
+lib.blips.getAllOfSprite(sprite)
+```
+
+**Instance Methods:**
+
+```lua
+blip:setSprite(sprite)       -- Change blip sprite
+blip:setColor(color)         -- Change blip color
+blip:setLabel(label)         -- Change blip text
+blip:setRoute(enabled, color) -- Set/remove GPS route
+blip:setCoords(coords)       -- Move blip location
+blip:pulse()                 -- Make blip pulse
+blip:getCoords()            -- Get blip position
+blip:remove()               -- Delete blip
+```
+
+### **Example Usage**
+
+```lua
+-- Create a shop blip with full configuration
+local shopBlip = lib.blips.createAtCoords(vector3(373.0, 325.0, 103.0), {
+    sprite = 52,           -- Shop sprite
+    color = 2,             -- Green color
+    scale = 0.8,           -- Smaller scale
+    label = "24/7 Store",  -- Display name
+    shortRange = true,     -- Only show when close
+    category = 1,          -- Category for filtering
+    alpha = 200            -- Transparency
+})
+
+-- Add GPS route to the shop
+shopBlip:setRoute(true, 3) -- Enable route with blue color
+
+-- Create a temporary mission blip
+local missionBlip = lib.blips.createAtCoords(targetLocation, {
+    sprite = 1,
+    color = 1,
+    label = "Mission Objective"
+})
+
+-- Make it pulse for attention
+missionBlip:pulse()
+
+-- Clean up when mission is complete
+missionBlip:remove()
+
+-- Create a radius blip for an area
+local areaBlip = lib.blips.createRadius(vector3(0.0, 0.0, 72.0), 50.0, {
+    color = 1,
+    alpha = 128,
+    label = "Restricted Area"
+})
 ```
 
 ---
