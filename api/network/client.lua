@@ -80,35 +80,36 @@ function Network:getEntity(netId)
 
     local entity = NetworkGetEntityFromNetworkId(netId)
 
-    if not entity or not DoesEntityExist(entity) then
-        entity = NetToVeh(netId)
-        if DoesEntityExist(entity) then
-            self.private.entityCache[entity] = netId
-            self.private.netIdCache[netId] = entity
-            return entity
-        end
-
-        entity = NetToPed(netId)
-        if DoesEntityExist(entity) then
-            self.private.entityCache[entity] = netId
-            self.private.netIdCache[netId] = entity
-            return entity
-        end
-
-        entity = NetToObj(netId)
-        if DoesEntityExist(entity) then
-            self.private.entityCache[entity] = netId
-            self.private.netIdCache[netId] = entity
-            return entity
-        end
-
-        lib.logger:warn('network', 'Failed to get entity for network ID: %s', netId)
-        return nil
+    if entity and DoesEntityExist(entity) then
+        self.private.entityCache[entity] = netId
+        self.private.netIdCache[netId] = entity
+        return entity
     end
 
-    self.private.entityCache[entity] = netId
-    self.private.netIdCache[netId] = entity
-    return entity
+    -- Try specific conversion functions as fallback
+    entity = NetToVeh(netId)
+    if entity and DoesEntityExist(entity) then
+        self.private.entityCache[entity] = netId
+        self.private.netIdCache[netId] = entity
+        return entity
+    end
+
+    entity = NetToPed(netId)
+    if entity and DoesEntityExist(entity) then
+        self.private.entityCache[entity] = netId
+        self.private.netIdCache[netId] = entity
+        return entity
+    end
+
+    entity = NetToObj(netId)
+    if entity and DoesEntityExist(entity) then
+        self.private.entityCache[entity] = netId
+        self.private.netIdCache[netId] = entity
+        return entity
+    end
+
+    lib.logger:warn('network', 'Failed to get entity for network ID: %s', netId)
+    return nil
 end
 
 ---Check if entity exists in network scope

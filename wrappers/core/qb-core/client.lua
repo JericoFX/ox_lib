@@ -278,7 +278,42 @@ function Core:hideText()
 end
 
 function Core:progressBar(name, label, duration, useWhileDead, canCancel, disableControls, animation, prop, propTwo, onFinish, onCancel)
-    QBCore.Functions.Progressbar(name, label, duration, useWhileDead, canCancel, disableControls, animation, prop, propTwo, onFinish, onCancel)
+    local progressData = {
+        label = label,
+        duration = duration,
+        position = 'bottom',
+        useWhileDead = useWhileDead or false,
+        allowRagdoll = true,
+        allowCuffed = false,
+        allowFalling = false, 
+        allowSwimming = false,
+        canCancel = canCancel or false,
+        anim = animation,
+        prop = prop,
+        disable = disableControls or {
+            move = true,
+            sprint = true,
+            car = false,
+            combat = true,
+            mouse = false
+        }
+    }
+    
+    if propTwo then
+        if type(progressData.prop) == 'table' and progressData.prop.model then
+            progressData.prop = {progressData.prop, propTwo}
+        else
+            progressData.prop = propTwo
+        end
+    end
+    
+    local success = lib.progressBar(progressData)
+    
+    if success and onFinish then 
+        onFinish() 
+    elseif not success and onCancel then
+        onCancel()
+    end
 end
 
 -- Cache management
