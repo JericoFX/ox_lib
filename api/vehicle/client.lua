@@ -151,7 +151,7 @@ function lib.vehicle.create(model, coords, heading, callback, options)
     end
 
     if options.fuel and options.fuel >= 0 and options.fuel <= 100 then
-        SetVehicleFuelLevel(vehicle, options.fuel)
+        SetVehicleFuelLevel(vehicle, options.fuel + 0.0)
     end
 
     if options.engineHealth and options.engineHealth >= 0 and options.engineHealth <= 1000 then
@@ -460,7 +460,7 @@ end
 function lib.vehicle:setFuelLevel(level)
     if not self:isValid() then return false end
     if level < 0 or level > 100.0 then return false end
-    SetVehicleFuelLevel(self.vehicle, level)
+    SetVehicleFuelLevel(self.vehicle, level + 0.0)
     return true
 end
 

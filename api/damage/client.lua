@@ -190,9 +190,13 @@ function Damage:_processDamageEvent(damageInfo)
     for _, handler in pairs(self.private.damageHandlers) do
         if handler.active then
             local result = handler.callback(damageInfo)
-            return result
+            -- If any handler returns false, stop processing
+            if result == false then
+                return false
+            end
         end
     end
+    return true
 end
 
 -- Create default instance

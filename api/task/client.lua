@@ -769,13 +769,12 @@ end
 -- Función auxiliar para normalizar el índice de asiento
 function lib.task:_normalizeSeatIndex(seat)
     if type(seat) == 'string' then
-        -- Si es string, buscar en el enum que es medio al pedo tener un enum con strings
         local seatIndex = lib.enums.vehicles.SEATS[seat]
         return seatIndex -- Puede ser nil si no existe
     elseif type(seat) == 'number' then
         return seat
     else
-        return -1
+        return nil
     end
 end
 

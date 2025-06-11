@@ -1,17 +1,15 @@
 ---@meta
 
 ---@class lib.player
----@field playerId number The player ID or cache.ped if not specified
+---@field playerId number The player ID
 lib.player = lib.class("player")
 
 ---Player API Class - Client Only
 ---Player management system for client-side only
----@param playerId? number If passed, it's for that specific player. If not passed, uses cache.ped
+---@param playerId? number If passed, it's for that specific player. If not passed, uses cache.playerId
 ---@return lib.player
 function lib.player:constructor(playerId)
-    -- Si se pasa playerId, es para ese jugador específico
-    -- Si no se pasa, usa el cache.ped
-    self.playerId = playerId or cache.ped
+    self.playerId = playerId or cache.playerId
 end
 
 -- =====================================
@@ -27,10 +25,10 @@ end
 ---Get the ped of the local player or specific player
 ---@return number ped The player ped entity
 function lib.player:getPed()
-    if self.playerId == cache.ped then
-        return PlayerPedId()
+    if self.playerId == cache.playerId then
+        return cache.ped
     else
-        return cache.serverId
+        return GetPlayerPed(self.playerId)
     end
 end
 
@@ -94,7 +92,7 @@ function lib.player:getVehicleSeat()
     local ped = self:getPed()
     if ped and ped ~= 0 then
         local vehicle = cache.vehicle
-        if vehicle then -- BOLUDO CACHE.VEHICLE RETORNA FALSO SI NO EXISTE!
+        if vehicle then
             for seat, seatIndex in pairs(lib.enums.vehicles.SEATS) do
                 if GetPedInVehicleSeat(vehicle, seatIndex) == ped then
                     return seat, seatIndex
@@ -167,7 +165,7 @@ end
 ---Check if player is online (for other players)
 ---@return boolean online True if player is online
 function lib.player:isOnline()
-    if self.playerId == cache.ped then
+    if self.playerId == cache.playerId then
         return true
     end
 

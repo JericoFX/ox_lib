@@ -180,7 +180,8 @@ function Audio:setVolume(audioId, volume)
     local audioSource = Audio.activeAudioSources[audioId]
     if not audioSource or audioSource.instance ~= self then return end
 
-    SetVariableOnSound(audioId, 'Volume', volume)
+    -- Note: SetVariableOnSound is not available in FiveM, volume control is limited
+    -- Volume should be set during sound creation or through other means
     audioSource.options.volume = volume
 end
 
