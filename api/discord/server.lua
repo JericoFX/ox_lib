@@ -7,6 +7,7 @@
     sending rich messages, embeds with colors, player logs, admin logs, and server status
     updates to Discord channels. The system includes:
 
+    - Instance-based webhook management with default configurations
     - Message validation and error handling
     - Rich embed creation with customizable colors, fields, thumbnails, and footers
     - Pre-built log templates for common server events
@@ -17,8 +18,6 @@
     All functions use Discord's webhook API and support async operations through
     FiveM's PerformHttpRequest with promise-based handling.
 --]]
-
-local discord = {}
 
 ---@class DiscordOptions
 ---@field username? string Custom username for the webhook
@@ -64,32 +63,17 @@ local discord = {}
 ---@field body string Response body
 ---@field headers table Response headers
 
----Performs an HTTP request to Discord webhook with promise-based handling
----@param url string Webhook URL
----@param data table Request payload
----@param headers? table HTTP headers
----@return DiscordHttpResponse response HTTP response object
-local function performHttpRequest(url, data, headers)
-    if not url:match('https://discord%.com/') and not url:match('https://discordapp%.com/') then
-        return {
-            status = 400,
-            body = 'Only Discord URLs are allowed',
-            headers = {}
-        }
-    end
+---@class DiscordInstanceOptions
+---@field username? string Default username for this instance
+---@field avatar_url? string Default avatar URL for this instance
+---@field server_name? string Default server name for footers
+---@field server_icon? string Default server icon URL for footers
+---@field default_color? string|number Default embed color
+---@field validate_webhooks? boolean Whether to validate webhook URLs (default: true)
 
-    local promise = promise.new()
-
-    PerformHttpRequest(url, function(statusCode, response, responseHeaders)
-        promise:resolve({
-            status = statusCode,
-            body = response,
-            headers = responseHeaders
-        })
-    end, 'POST', json.encode(data), headers or { ['Content-Type'] = 'application/json' })
-
-    return Citizen.Await(promise)
-end
+---@class lib.discord : OxClass
+---@field private private { webhook: string, options: DiscordInstanceOptions, colors: table<string, number> }
+lib.discord = lib.class('Discord')
 
 ---Discord color definitions with their decimal values
 ---@type table<string, number>
@@ -126,6 +110,33 @@ local colors = {
     random = math.random(0, 16777215)
 }
 
+---Performs an HTTP request to Discord webhook with promise-based handling
+---@param url string Webhook URL
+---@param data table Request payload
+---@param headers? table HTTP headers
+---@return DiscordHttpResponse response HTTP response object
+local function performHttpRequest(url, data, headers)
+    if not url:match('https://discord%.com/') and not url:match('https://discordapp%.com/') then
+        return {
+            status = 400,
+            body = 'Only Discord URLs are allowed',
+            headers = {}
+        }
+    end
+
+    local promise = promise.new()
+
+    PerformHttpRequest(url, function(statusCode, response, responseHeaders)
+        promise:resolve({
+            status = statusCode,
+            body = response,
+            headers = responseHeaders
+        })
+    end, 'POST', json.encode(data), headers or { ['Content-Type'] = 'application/json' })
+
+    return Citizen.Await(promise)
+end
+
 ---Validates Discord webhook URL format
 ---@param webhook string Webhook URL to validate
 ---@return boolean isValid Whether webhook is valid
@@ -142,24 +153,54 @@ local function validateWebhook(webhook)
     return true
 end
 
----Sends a simple text message to Discord webhook
----@param webhook string Discord webhook URL
----@param message string Message content to send
----@param options? DiscordOptions Additional options for the message
----@return boolean success Whether the message was sent successfully
-function discord.sendMessage(webhook, message, options)
+---Constructor for Discord instance
+---@param webhook string Default webhook URL for this instance
+---@param options? DiscordInstanceOptions Instance configuration options
+function lib.discord:constructor(webhook, options)
+    if not webhook then
+        error('Discord webhook URL is required', 2)
+    end
+
     local isValid, error = validateWebhook(webhook)
     if not isValid then
-        print('^1[ox_lib] Discord Error: ' .. error .. '^0')
-        return false
+        error('Invalid Discord webhook: ' .. error, 2)
     end
 
     options = options or {}
 
-    local data = {
-        content = message,
+    self.private.webhook = webhook
+    self.private.options = {
         username = options.username,
         avatar_url = options.avatar_url,
+        server_name = options.server_name or GetConvar('sv_hostname', 'FiveM Server'),
+        server_icon = options.server_icon,
+        default_color = options.default_color or 'blue',
+        validate_webhooks = options.validate_webhooks ~= false
+    }
+    self.private.colors = colors
+end
+
+---Sends a simple text message to Discord webhook
+---@param message string Message content to send
+---@param webhook? string Override webhook URL for this message
+---@param options? DiscordOptions Additional options for the message
+---@return boolean success Whether the message was sent successfully
+function lib.discord:sendMessage(message, webhook, options)
+    webhook = webhook or self.private.webhook
+    options = options or {}
+
+    if self.private.options.validate_webhooks then
+        local isValid, error = validateWebhook(webhook)
+        if not isValid then
+            print('^1[ox_lib] Discord Error: ' .. error .. '^0')
+            return false
+        end
+    end
+
+    local data = {
+        content = message,
+        username = options.username or self.private.options.username,
+        avatar_url = options.avatar_url or self.private.options.avatar_url,
         tts = options.tts or false
     }
 
@@ -174,18 +215,21 @@ function discord.sendMessage(webhook, message, options)
 end
 
 ---Sends one or more embeds to Discord webhook
----@param webhook string Discord webhook URL
 ---@param embeds DiscordEmbed[] Array of embed objects
+---@param webhook? string Override webhook URL for this message
 ---@param options? DiscordOptions Additional options for the message
 ---@return boolean success Whether the embeds were sent successfully
-function discord.sendEmbed(webhook, embeds, options)
-    local isValid, error = validateWebhook(webhook)
-    if not isValid then
-        print('^1[ox_lib] Discord Error: ' .. error .. '^0')
-        return false
-    end
-
+function lib.discord:sendEmbed(embeds, webhook, options)
+    webhook = webhook or self.private.webhook
     options = options or {}
+
+    if self.private.options.validate_webhooks then
+        local isValid, error = validateWebhook(webhook)
+        if not isValid then
+            print('^1[ox_lib] Discord Error: ' .. error .. '^0')
+            return false
+        end
+    end
 
     if type(embeds) ~= 'table' or #embeds == 0 then
         print('^1[ox_lib] Discord Error: Embeds must be a non-empty table^0')
@@ -194,8 +238,8 @@ function discord.sendEmbed(webhook, embeds, options)
 
     local data = {
         content = options.content,
-        username = options.username,
-        avatar_url = options.avatar_url,
+        username = options.username or self.private.options.username,
+        avatar_url = options.avatar_url or self.private.options.avatar_url,
         tts = options.tts or false,
         embeds = embeds
     }
@@ -213,7 +257,7 @@ end
 ---Creates a Discord embed object with specified options
 ---@param options? DiscordEmbed Embed configuration options
 ---@return DiscordEmbed embed Configured embed object
-function discord.createEmbed(options)
+function lib.discord:createEmbed(options)
     options = options or {}
 
     local embed = {
@@ -221,7 +265,7 @@ function discord.createEmbed(options)
         description = options.description,
         url = options.url,
         timestamp = options.timestamp,
-        color = type(options.color) == 'string' and colors[options.color] or options.color or colors.default
+        color = type(options.color) == 'string' and self.private.colors[options.color] or options.color or self.private.colors[self.private.options.default_color]
     }
 
     if options.author then
@@ -264,7 +308,7 @@ end
 ---@param value string|number Field value
 ---@param inline? boolean Whether field should be displayed inline
 ---@return DiscordEmbed embed Modified embed object
-function discord.addField(embed, name, value, inline)
+function lib.discord:addField(embed, name, value, inline)
     if not embed.fields then
         embed.fields = {}
     end
@@ -279,52 +323,46 @@ function discord.addField(embed, name, value, inline)
 end
 
 ---Sends a generic log message with automatic timestamp and server info
----@param webhook string Discord webhook URL
 ---@param title string Log title
 ---@param description string Log description
 ---@param color? string|number Embed color name or decimal value
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendLog(webhook, title, description, color, options)
-    local isValid, error = validateWebhook(webhook)
-    if not isValid then
-        print('^1[ox_lib] Discord Error: ' .. error .. '^0')
-        return false
-    end
-
+function lib.discord:sendLog(title, description, color, webhook, options)
     options = options or {}
 
-    local embed = discord.createEmbed({
+    local embed = self:createEmbed({
         title = title,
         description = description,
-        color = color or 'blue',
+        color = color or self.private.options.default_color,
         timestamp = options.timestamp or os.date('!%Y-%m-%dT%H:%M:%SZ'),
         footer = options.footer or {
-            text = options.server_name or GetConvar('sv_hostname', 'FiveM Server'),
-            icon_url = options.server_icon
+            text = options.server_name or self.private.options.server_name,
+            icon_url = options.server_icon or self.private.options.server_icon
         }
     })
 
     if options.fields then
         for _, field in ipairs(options.fields) do
-            discord.addField(embed, field.name, field.value, field.inline)
+            self:addField(embed, field.name, field.value, field.inline)
         end
     end
 
-    return discord.sendEmbed(webhook, { embed }, {
-        username = options.username,
-        avatar_url = options.avatar_url
+    return self:sendEmbed({ embed }, webhook, {
+        username = options.username or self.private.options.username,
+        avatar_url = options.avatar_url or self.private.options.avatar_url
     })
 end
 
 ---Sends a player-specific log with player identifiers
----@param webhook string Discord webhook URL
 ---@param playerId string|number Player server ID
 ---@param action string Action description
 ---@param description string Detailed description
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendPlayerLog(webhook, playerId, action, description, options)
+function lib.discord:sendPlayerLog(playerId, action, description, webhook, options)
     options = options or {}
 
     local playerName = GetPlayerName(playerId) or 'Unknown'
@@ -345,86 +383,124 @@ function discord.sendPlayerLog(webhook, playerId, action, description, options)
         end
     end
 
-    local embed = discord.createEmbed({
+    local embed = self:createEmbed({
         title = action,
         description = description,
-        color = options.color or 'blue',
+        color = options.color or self.private.options.default_color,
         timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
         footer = {
-            text = options.server_name or GetConvar('sv_hostname', 'FiveM Server'),
-            icon_url = options.server_icon
+            text = options.server_name or self.private.options.server_name,
+            icon_url = options.server_icon or self.private.options.server_icon
         }
     })
 
-    discord.addField(embed, 'Player', playerName, true)
-    discord.addField(embed, 'Server ID', playerId, true)
-    discord.addField(embed, 'License', playerLicense, false)
-    discord.addField(embed, 'Discord', playerDiscord, true)
-    discord.addField(embed, 'Steam', playerSteam, true)
+    self:addField(embed, 'Player', playerName, true)
+    self:addField(embed, 'Server ID', playerId, true)
+    self:addField(embed, 'License', playerLicense, false)
+    self:addField(embed, 'Discord', playerDiscord, true)
+    self:addField(embed, 'Steam', playerSteam, true)
 
     if options.fields then
         for _, field in ipairs(options.fields) do
-            discord.addField(embed, field.name, field.value, field.inline)
+            self:addField(embed, field.name, field.value, field.inline)
         end
     end
 
-    return discord.sendEmbed(webhook, { embed }, {
-        username = options.username,
-        avatar_url = options.avatar_url
+    return self:sendEmbed({ embed }, webhook, {
+        username = options.username or self.private.options.username,
+        avatar_url = options.avatar_url or self.private.options.avatar_url
     })
 end
 
 ---Sends a success log message (green color)
----@param webhook string Discord webhook URL
 ---@param title string Log title
 ---@param description string Log description
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendSuccess(webhook, title, description, options)
-    return discord.sendLog(webhook, title, description, 'green', options)
+function lib.discord:sendSuccess(title, description, webhook, options)
+    return self:sendLog(title, description, 'green', webhook, options)
 end
 
 ---Sends an error log message (red color)
----@param webhook string Discord webhook URL
 ---@param title string Log title
 ---@param description string Log description
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendError(webhook, title, description, options)
-    return discord.sendLog(webhook, title, description, 'red', options)
+function lib.discord:sendError(title, description, webhook, options)
+    return self:sendLog(title, description, 'red', webhook, options)
 end
 
 ---Sends a warning log message (yellow color)
----@param webhook string Discord webhook URL
 ---@param title string Log title
 ---@param description string Log description
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendWarning(webhook, title, description, options)
-    return discord.sendLog(webhook, title, description, 'yellow', options)
+function lib.discord:sendWarning(title, description, webhook, options)
+    return self:sendLog(title, description, 'yellow', webhook, options)
 end
 
 ---Sends an info log message (blue color)
----@param webhook string Discord webhook URL
 ---@param title string Log title
 ---@param description string Log description
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendInfo(webhook, title, description, options)
-    return discord.sendLog(webhook, title, description, 'blue', options)
+function lib.discord:sendInfo(title, description, webhook, options)
+    return self:sendLog(title, description, 'blue', webhook, options)
 end
 
 ---Returns the available color definitions
 ---@return table<string, number> colors Color name to decimal value mapping
-function discord.getColors()
-    return colors
+function lib.discord:getColors()
+    return self.private.colors
+end
+
+---Gets the current default webhook URL
+---@return string webhook Default webhook URL
+function lib.discord:getWebhook()
+    return self.private.webhook
+end
+
+---Sets a new default webhook URL
+---@param webhook string New webhook URL
+---@return boolean success Whether webhook was set successfully
+function lib.discord:setWebhook(webhook)
+    if self.private.options.validate_webhooks then
+        local isValid, error = validateWebhook(webhook)
+        if not isValid then
+            print('^1[ox_lib] Discord Error: ' .. error .. '^0')
+            return false
+        end
+    end
+
+    self.private.webhook = webhook
+    return true
+end
+
+---Gets current instance options
+---@return DiscordInstanceOptions options Current instance options
+function lib.discord:getOptions()
+    return table.clone(self.private.options)
+end
+
+---Updates instance options
+---@param options DiscordInstanceOptions New options to merge
+function lib.discord:setOptions(options)
+    for key, value in pairs(options) do
+        if self.private.options[key] ~= nil then
+            self.private.options[key] = value
+        end
+    end
 end
 
 ---Formats text as code block with optional syntax highlighting
 ---@param text string|number Text to format
 ---@param language? string Programming language for syntax highlighting
 ---@return string formatted Formatted code block
-function discord.formatCode(text, language)
+function lib.discord:formatCode(text, language)
     language = language or ''
     return '```' .. language .. '\n' .. tostring(text) .. '\n```'
 end
@@ -432,97 +508,97 @@ end
 ---Formats text as bold
 ---@param text string|number Text to format
 ---@return string formatted Bold formatted text
-function discord.formatBold(text)
+function lib.discord:formatBold(text)
     return '**' .. tostring(text) .. '**'
 end
 
 ---Formats text as italic
 ---@param text string|number Text to format
 ---@return string formatted Italic formatted text
-function discord.formatItalic(text)
+function lib.discord:formatItalic(text)
     return '*' .. tostring(text) .. '*'
 end
 
 ---Formats text as underlined
 ---@param text string|number Text to format
 ---@return string formatted Underlined formatted text
-function discord.formatUnderline(text)
+function lib.discord:formatUnderline(text)
     return '__' .. tostring(text) .. '__'
 end
 
 ---Formats text as strikethrough
 ---@param text string|number Text to format
 ---@return string formatted Strikethrough formatted text
-function discord.formatStrikethrough(text)
+function lib.discord:formatStrikethrough(text)
     return '~~' .. tostring(text) .. '~~'
 end
 
 ---Formats text as spoiler (hidden until clicked)
 ---@param text string|number Text to format
 ---@return string formatted Spoiler formatted text
-function discord.formatSpoiler(text)
+function lib.discord:formatSpoiler(text)
     return '||' .. tostring(text) .. '||'
 end
 
 ---Formats text as quote
 ---@param text string|number Text to format
 ---@return string formatted Quote formatted text
-function discord.formatQuote(text)
+function lib.discord:formatQuote(text)
     return '> ' .. tostring(text)
 end
 
 ---Formats text as block quote
 ---@param text string|number Text to format
 ---@return string formatted Block quote formatted text
-function discord.formatBlockQuote(text)
+function lib.discord:formatBlockQuote(text)
     return '>>> ' .. tostring(text)
 end
 
 ---Sends an admin action log with structured information
----@param webhook string Discord webhook URL
 ---@param admin string Admin name or identifier
 ---@param action string Action performed
 ---@param target string Target of the action
 ---@param reason? string Reason for the action
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the log was sent successfully
-function discord.sendAdminLog(webhook, admin, action, target, reason, options)
+function lib.discord:sendAdminLog(admin, action, target, reason, webhook, options)
     options = options or {}
 
-    local embed = discord.createEmbed({
+    local embed = self:createEmbed({
         title = 'Admin Action: ' .. action,
         description = reason or 'No reason provided',
         color = 'orange',
         timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
         footer = {
-            text = options.server_name or GetConvar('sv_hostname', 'FiveM Server'),
-            icon_url = options.server_icon
+            text = options.server_name or self.private.options.server_name,
+            icon_url = options.server_icon or self.private.options.server_icon
         }
     })
 
-    discord.addField(embed, 'Admin', admin, true)
-    discord.addField(embed, 'Target', target, true)
-    discord.addField(embed, 'Action', action, true)
+    self:addField(embed, 'Admin', admin, true)
+    self:addField(embed, 'Target', target, true)
+    self:addField(embed, 'Action', action, true)
 
     if options.fields then
         for _, field in ipairs(options.fields) do
-            discord.addField(embed, field.name, field.value, field.inline)
+            self:addField(embed, field.name, field.value, field.inline)
         end
     end
 
-    return discord.sendEmbed(webhook, { embed }, {
+    return self:sendEmbed({ embed }, webhook, {
         username = options.username or 'Admin System',
-        avatar_url = options.avatar_url
+        avatar_url = options.avatar_url or self.private.options.avatar_url
     })
 end
 
 ---Sends server status update with player count and status information
----@param webhook string Discord webhook URL
 ---@param status string Server status ('online', 'offline', 'restarting', 'maintenance')
 ---@param message? string Additional status message
+---@param webhook? string Override webhook URL
 ---@param options? DiscordOptions Additional options
 ---@return boolean success Whether the status was sent successfully
-function discord.sendServerStatus(webhook, status, message, options)
+function lib.discord:sendServerStatus(status, message, webhook, options)
     options = options or {}
 
     local colorMap = {
@@ -532,26 +608,24 @@ function discord.sendServerStatus(webhook, status, message, options)
         maintenance = 'orange'
     }
 
-    local embed = discord.createEmbed({
+    local embed = self:createEmbed({
         title = 'Server Status: ' .. status:upper(),
         description = message or 'Server status update',
         color = colorMap[status:lower()] or 'grey',
         timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
         footer = {
-            text = options.server_name or GetConvar('sv_hostname', 'FiveM Server'),
-            icon_url = options.server_icon
+            text = options.server_name or self.private.options.server_name,
+            icon_url = options.server_icon or self.private.options.server_icon
         }
     })
 
     if status:lower() == 'online' then
-        discord.addField(embed, 'Players Online', GetNumPlayerIndices(), true)
-        discord.addField(embed, 'Max Players', GetConvarInt('sv_maxclients', 32), true)
+        self:addField(embed, 'Players Online', GetNumPlayerIndices(), true)
+        self:addField(embed, 'Max Players', GetConvarInt('sv_maxclients', 32), true)
     end
 
-    return discord.sendEmbed(webhook, { embed }, {
+    return self:sendEmbed({ embed }, webhook, {
         username = options.username or 'Server Monitor',
-        avatar_url = options.avatar_url
+        avatar_url = options.avatar_url or self.private.options.avatar_url
     })
 end
-
-lib.discord = discord

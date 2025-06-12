@@ -29,6 +29,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.events` - **NEW!** Universal event system with automatic caching
 - `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
 - `lib.blips` - **NEW!** Enhanced blip management system with object-oriented approach
+- `lib.discord` - **NEW!** Instance-based Discord webhook integration system
 
 ### 🌐 **Framework Wrappers**
 
@@ -49,6 +50,192 @@ This is an **experimental extension** of the original ox_lib that adds:
 - **Singleton pattern** for direct access
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
+
+---
+
+## 🎯 **NEW: Discord Integration System**
+
+The **Discord Integration System** provides an instance-based approach to Discord webhook management with default configurations, rich embeds, and specialized logging functions.
+
+### **The Problem It Solves**
+
+```lua
+-- Before: Repetitive webhook configuration for every message
+local webhook = "https://discord.com/api/webhooks/..."
+TriggerEvent('discord:sendMessage', webhook, message, {
+    username = 'Server',
+    avatar_url = 'https://...',
+    -- Same config repeated everywhere
+})
+```
+
+### **The Solution**
+
+```lua
+-- After: Instance-based configuration
+local adminDiscord = lib.discord:new('ADMIN_WEBHOOK', {
+    username = 'Admin System',
+    avatar_url = 'https://admin-icon.png',
+    default_color = 'red',
+    server_name = 'My FiveM Server'
+})
+
+-- Simple usage with instance defaults
+adminDiscord:sendSuccess('Admin Action', 'Player was banned')
+adminDiscord:sendPlayerLog(playerId, 'Player Banned', 'Reason: Cheating')
+```
+
+### **Key Features**
+
+- **📦 Instance Management** - Create multiple Discord instances for different channels
+- **⚙️ Default Configuration** - Set webhook, username, colors per instance
+- **🎨 Rich Embeds** - Automated embed creation with colors and formatting
+- **👤 Player Logging** - Automatic player identifier extraction
+- **🔧 Admin Logging** - Structured admin action logs
+- **📊 Server Status** - Server monitoring and status updates
+- **🎯 Text Formatting** - Discord markdown formatting utilities
+- **🔒 Validation** - Automatic webhook URL validation
+- **🔄 Override Support** - Override instance defaults per message
+
+### **Creating Discord Instances**
+
+```lua
+-- Basic instance with webhook
+local generalDiscord = lib.discord:new('https://discord.com/api/webhooks/...')
+
+-- Advanced instance with full configuration
+local adminDiscord = lib.discord:new('ADMIN_WEBHOOK_URL', {
+    username = 'Admin System',
+    avatar_url = 'https://example.com/admin-icon.png',
+    server_name = 'My FiveM Server',
+    server_icon = 'https://example.com/server-icon.png',
+    default_color = 'red',
+    validate_webhooks = true
+})
+```
+
+### **Available Methods**
+
+**Basic Messaging:**
+- `:sendMessage(message, webhook?, options?)` - Send simple text message
+- `:sendEmbed(embeds, webhook?, options?)` - Send rich embeds
+
+**Log Methods:**
+- `:sendLog(title, description, color?, webhook?, options?)` - Generic log
+- `:sendSuccess(title, description, webhook?, options?)` - Success log (green)
+- `:sendError(title, description, webhook?, options?)` - Error log (red)
+- `:sendWarning(title, description, webhook?, options?)` - Warning log (yellow)
+- `:sendInfo(title, description, webhook?, options?)` - Info log (blue)
+
+**Specialized Logs:**
+- `:sendPlayerLog(playerId, action, description, webhook?, options?)` - Player-specific logs
+- `:sendAdminLog(admin, action, target, reason?, webhook?, options?)` - Admin action logs
+- `:sendServerStatus(status, message?, webhook?, options?)` - Server status updates
+
+**Embed Building:**
+- `:createEmbed(options?)` - Create embed object
+- `:addField(embed, name, value, inline?)` - Add field to embed
+
+**Text Formatting:**
+- `:formatCode(text, language?)` - Code blocks
+- `:formatBold(text)` - **Bold text**
+- `:formatItalic(text)` - *Italic text*
+- `:formatUnderline(text)` - __Underlined text__
+- `:formatStrikethrough(text)` - ~~Strikethrough text~~
+- `:formatSpoiler(text)` - ||Spoiler text||
+- `:formatQuote(text)` - > Quote text
+- `:formatBlockQuote(text)` - >>> Block quote
+
+**Instance Management:**
+- `:getWebhook()` - Get current default webhook
+- `:setWebhook(webhook)` - Set new default webhook
+- `:getOptions()` - Get current instance options
+- `:setOptions(options)` - Update instance options
+- `:getColors()` - Get available color definitions
+
+### **Example Usage**
+
+```lua
+-- Create instances for different purposes
+local adminLogs = lib.discord:new(Config.AdminWebhook, {
+    username = 'Admin System',
+    default_color = 'red'
+})
+
+local playerLogs = lib.discord:new(Config.PlayerWebhook, {
+    username = 'Player System',
+    default_color = 'blue'
+})
+
+-- Player events
+RegisterNetEvent('playerConnected')
+AddEventHandler('playerConnected', function()
+    local source = source
+    playerLogs:sendPlayerLog(source, 'Player Connected', 'Player joined the server')
+end)
+
+-- Admin actions
+RegisterCommand('ban', function(source, args)
+    local target = tonumber(args[1])
+    local reason = table.concat(args, ' ', 2)
+    
+    -- Your ban logic here
+    
+    adminLogs:sendAdminLog(
+        GetPlayerName(source),
+        'Player Banned',
+        GetPlayerName(target),
+        reason
+    )
+end, true)
+
+-- Server status
+RegisterNetEvent('onResourceStart')
+AddEventHandler('onResourceStart', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        playerLogs:sendServerStatus('online', 'Server has started successfully')
+    end
+end)
+
+-- Rich embed example
+local embed = adminLogs:createEmbed({
+    title = 'Server Maintenance',
+    description = 'Scheduled maintenance in 30 minutes',
+    color = 'yellow',
+    thumbnail = 'https://example.com/maintenance-icon.png'
+})
+
+adminLogs:addField(embed, 'Duration', '2 hours', true)
+adminLogs:addField(embed, 'Reason', 'Database updates', true)
+adminLogs:sendEmbed({ embed })
+```
+
+### **Configuration Options**
+
+```lua
+-- Instance options
+{
+    username = 'Custom Bot Name',           -- Default username
+    avatar_url = 'https://...',            -- Default avatar
+    server_name = 'My Server',             -- Footer server name
+    server_icon = 'https://...',           -- Footer server icon
+    default_color = 'blue',                -- Default embed color
+    validate_webhooks = true               -- Validate webhook URLs
+}
+
+-- Message options (per message)
+{
+    username = 'Override Username',         -- Override instance username
+    avatar_url = 'https://...',            -- Override instance avatar
+    server_name = 'Override Server',       -- Override footer server name
+    server_icon = 'https://...',           -- Override footer server icon
+    timestamp = '2023-12-01T12:00:00Z',    -- Custom timestamp
+    fields = {                             -- Additional embed fields
+        { name = 'Field 1', value = 'Value 1', inline = true },
+        { name = 'Field 2', value = 'Value 2', inline = false }
+    }
+}
+```
 
 ---
 
