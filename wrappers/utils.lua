@@ -2,6 +2,32 @@ local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will l
     local config = require "wrappers.config"
     local mapping = config[wrapperType] or {}
 
+    -- Evitar spam de consolas: solo se imprimen los logs la primera vez que
+    -- se carga un tipo de wrapper en el cliente/servidor. Para ello usamos
+    -- un KVP (almacenamiento local) como flag. KVP está disponible tanto en
+    -- client como server mediante las funciones *Kvp*; si no existen, se
+    -- cae de forma segura y simplemente mantiene los prints.
+
+    local GetResourceKvpString = GetResourceKvpString -- puede ser nil en server antiguo
+    local SetResourceKvpNoSync = SetResourceKvpNoSync
+
+    local kvpKey = ("ox_lib_wrapper_%s_printed"):format(wrapperType)
+    local shouldPrint = true
+
+    if GetResourceKvpString then
+        shouldPrint = not GetResourceKvpString(kvpKey)
+    end
+
+    local function debugPrint(...)
+        if shouldPrint then
+            print(...)
+        end
+    end
+
+    -- Reemplazamos print dentro de este scope para que todas las llamadas
+    -- posteriores usen debugPrint.
+    local print = debugPrint
+
     local function loadSystemFunctions(system)
         if not system then return {} end
 
@@ -97,6 +123,13 @@ local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will l
             end
         end
     end)
+
+    -- Una vez finalizada la inicialización, marcamos que ya se imprimió para
+    -- este tipo de wrapper y evitamos futuros duplicados desde otros
+    -- resources.
+    if shouldPrint and SetResourceKvpNoSync then
+        SetResourceKvpNoSync(kvpKey, '1')
+    end
 
     return lib[libKey]
 end
