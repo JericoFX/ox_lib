@@ -172,22 +172,26 @@ local lib = setmetatable({
     __call = call,
 })
 
+local CitizenCreateThreadNow = Citizen.CreateThreadNow
+local Wait = Wait
+local jsonEncode = json.encode
+local table_unpack = table.unpack
+
 local intervals = {}
---- Dream of a world where this PR gets accepted.
----@param callback function | number
----@param interval? number
----@param ... any
+
 function SetInterval(callback, interval, ...)
     interval = interval or 0
 
     if type(interval) ~= 'number' then
-        return error(('Interval must be a number. Received %s'):format(json.encode(interval --[[@as unknown]])))
+        return error(('Interval must be a number. Received %s'):format(jsonEncode(interval)))
     end
 
     local cbType = type(callback)
 
-    if cbType == 'number' and intervals[callback] then
-        intervals[callback] = interval or 0
+    if cbType == 'number' then
+        if intervals[callback] then
+            intervals[callback] = interval
+        end
         return
     end
 
@@ -195,17 +199,18 @@ function SetInterval(callback, interval, ...)
         return error(('Callback must be a function. Received %s'):format(cbType))
     end
 
-    local args, id = { ... }
+    local args = { ... }
+    local id
 
-    Citizen.CreateThreadNow(function(ref)
+    CitizenCreateThreadNow(function(ref)
         id = ref
-        intervals[id] = interval or 0
+        intervals[id] = interval
+        local cb = callback
         repeat
-            interval = intervals[id]
-            Wait(interval)
-
-            if interval < 0 then break end
-            callback(table.unpack(args))
+            local waitTime = intervals[id]
+            if waitTime < 0 then break end
+            Wait(waitTime)
+            cb(table_unpack(args))
         until false
         intervals[id] = nil
     end)
