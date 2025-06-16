@@ -1,5 +1,5 @@
 -- Server-side Events API - Pure Events Only
-local events = require 'api.events.init'
+local events = require 'api.events.shared'
 
 lib.events = lib.events or {}
 
@@ -39,7 +39,7 @@ end
 ---@param eventName string The event name to emit to all clients
 ---@param ... any Additional arguments to pass to all clients
 function lib.events.emitAllClients(eventName, ...)
-  --  TriggerClientEvent('lib:events:trigger', -1, eventName, ...)
+    --  TriggerClientEvent('lib:events:trigger', -1, eventName, ...)
     lib.triggerClientEvent(eventName, -1, ...)
 end
 
@@ -50,8 +50,7 @@ function lib.events.getAvailable()
 end
 
 -- Register client event handlers
-RegisterServerEvent('lib:events:emitAll')
-AddEventHandler('lib:events:emitAll', function(eventName, ...)
+RegisterServerEvent('lib:events:emitAll', function(eventName, ...)
     local source <const> = source
     lib.events.emitAllClients(eventName, ...)
 end)

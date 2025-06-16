@@ -37,3 +37,6 @@ documentation/PICKUPS_API.md
 test_streaming_audio.lua
 api/camera/examples.lua
 
+exclude/docs/
+exclude
+

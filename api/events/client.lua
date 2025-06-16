@@ -9,7 +9,7 @@
 ---@field getAvailable fun(): table Get available events for current framework
 
 -- Client-side Events API - Pure Events Only
-local events = require 'api.events.init'
+local events = require 'api.events.shared'
 
 lib.events = lib.events or {}
 
@@ -58,7 +58,6 @@ function lib.events.getAvailable()
 end
 
 -- Register server event handlers
-RegisterNetEvent('lib:events:trigger')
-AddEventHandler('lib:events:trigger', function(eventName, ...)
+RegisterNetEvent('lib:events:trigger', function(eventName, ...)
     events.trigger(eventName, ...)
 end)

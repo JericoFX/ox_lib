@@ -12,6 +12,7 @@
 ---@field weapons table Weapons-related enumerations
 ---@field statebags table StateBag-related enumerations
 ---@field damage table Damage-related enumerations
+---@field npc table NPC-related enumerations
 
 -- Cargar todos los enums disponibles
 local enums = {
@@ -25,7 +26,8 @@ local enums = {
     camera = require('api.enums.camera'),
     weapons = require('api.enums.weapons'),
     statebags = require('api.enums.statebags'),
-    damage = require('api.enums.damage')
+    damage = require('api.enums.damage'),
+    npc = require('api.enums.npc')
 }
 
 lib.enums = enums
