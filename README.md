@@ -30,6 +30,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
 - `lib.blips` - **NEW!** Enhanced blip management system with object-oriented approach
 - `lib.discord` - **NEW!** Instance-based Discord webhook integration system
+- `lib.achievements` - Lazy-loaded achievements system | not tested
 
 ### 🌐 **Framework Wrappers**
 
@@ -117,10 +118,12 @@ local adminDiscord = lib.discord:new('ADMIN_WEBHOOK_URL', {
 ### **Available Methods**
 
 **Basic Messaging:**
+
 - `:sendMessage(message, webhook?, options?)` - Send simple text message
 - `:sendEmbed(embeds, webhook?, options?)` - Send rich embeds
 
 **Log Methods:**
+
 - `:sendLog(title, description, color?, webhook?, options?)` - Generic log
 - `:sendSuccess(title, description, webhook?, options?)` - Success log (green)
 - `:sendError(title, description, webhook?, options?)` - Error log (red)
@@ -128,25 +131,29 @@ local adminDiscord = lib.discord:new('ADMIN_WEBHOOK_URL', {
 - `:sendInfo(title, description, webhook?, options?)` - Info log (blue)
 
 **Specialized Logs:**
+
 - `:sendPlayerLog(playerId, action, description, webhook?, options?)` - Player-specific logs
 - `:sendAdminLog(admin, action, target, reason?, webhook?, options?)` - Admin action logs
 - `:sendServerStatus(status, message?, webhook?, options?)` - Server status updates
 
 **Embed Building:**
+
 - `:createEmbed(options?)` - Create embed object
 - `:addField(embed, name, value, inline?)` - Add field to embed
 
 **Text Formatting:**
+
 - `:formatCode(text, language?)` - Code blocks
 - `:formatBold(text)` - **Bold text**
-- `:formatItalic(text)` - *Italic text*
-- `:formatUnderline(text)` - __Underlined text__
+- `:formatItalic(text)` - _Italic text_
+- `:formatUnderline(text)` - **Underlined text**
 - `:formatStrikethrough(text)` - ~~Strikethrough text~~
 - `:formatSpoiler(text)` - ||Spoiler text||
 - `:formatQuote(text)` - > Quote text
 - `:formatBlockQuote(text)` - >>> Block quote
 
 **Instance Management:**
+
 - `:getWebhook()` - Get current default webhook
 - `:setWebhook(webhook)` - Set new default webhook
 - `:getOptions()` - Get current instance options
@@ -178,9 +185,9 @@ end)
 RegisterCommand('ban', function(source, args)
     local target = tonumber(args[1])
     local reason = table.concat(args, ' ', 2)
-    
+
     -- Your ban logic here
-    
+
     adminLogs:sendAdminLog(
         GetPlayerName(source),
         'Player Banned',
@@ -375,6 +382,7 @@ ox_lib Extended includes the following enumeration modules:
 - **`lib.enums.statebags`** - StateBag keys and value types
 - **`lib.enums.jobs`** - Job categories and role definitions
 - **`lib.enums.flags`** - Various flag constants and bitwise operations
+- **`lib.enums.npc`** - NPC-related constants (AI states, etc.)
 
 ### **Example Usage**
 
@@ -702,6 +710,53 @@ local bankGuard = lib.npc.create({
         [22] = 'patrol'        -- Night patrol
     }
 })
+```
+
+### **Fluent configuration API (runtime setters)**
+
+You can now spawn a lightweight NPC and attach extra systems later. Each setter returns the NPC instance, so you can chain calls.
+
+| Method                           | Purpose                                                   |
+| -------------------------------- | --------------------------------------------------------- |
+| `npc:setSchedule(tbl)`           | Define or replace the hour-based schedule.                |
+| `npc:setRelationships(tbl)`      | Attach relationship data.                                 |
+| `npc:setInteractions(tbl)`       | Create an interaction zone when you need it.              |
+| `npc:setGuardZone(tbl)`          | Add a guard zone and enable threat detection.             |
+| `npc:setBehaviors(list, first?)` | Register available behaviors and optionally activate one. |
+
+```lua
+local npc = lib.npc:new({
+    model = 'a_m_m_business_01',
+    coords = vector3(100.0, 200.0, 30.0)
+})
+
+npc:setBehaviors({'civilian'})
+   :setSchedule({ [8] = 'civilian' })
+   :setInteractions({ label = 'Talk', icon = 'fa-user' })
+```
+
+### **NPC Event Hooks**
+
+| Hook Name              | Parameters           | Triggered When                               |
+| ---------------------- | -------------------- | -------------------------------------------- |
+| `npc:spawned`          | `(npc)`              | NPC is created in world                      |
+| `npc:behavior_changed` | `(npc, newBehavior)` | Behavior is switched via `:changeBehavior()` |
+| `npc:destroyed`        | `(npc)`              | NPC entity is deleted                        |
+
+Register callbacks from any script (client or server):
+
+```lua
+lib.npc.onSpawned(function(npc)
+    print('NPC spawned:', npc:getPed())
+end)
+
+lib.npc.onBehaviorChanged(function(npc, behavior)
+    print('NPC', npc:getId(), 'changed behavior to', behavior)
+end)
+
+lib.npc.onDestroyed(function(npc)
+    print('NPC removed:', npc:getId())
+end)
 ```
 
 ---
@@ -1635,3 +1690,36 @@ https://www.npmjs.com/package/@communityox/ox_lib
 - Install [CfxLua IntelliSense](https://marketplace.visualstudio.com/items?itemName=communityox.cfxlua-vscode-cox) to add natives and cfxlua runtime declarations to LLS.
 - You can load ox_lib into your global development environment by modifying workspace/user settings "Lua.workspace.library" with the resource path.
   - e.g. "c:/fxserver/resources/ox_lib"
+
+## NEW: Achievements API (Lazy Loaded)
+
+The Achievements API is loaded only when first accessed to minimize resource usage. It allows scripts to register achievements, unlock them for players, and query progress using a unified interface.
+
+### Basic Usage
+
+```lua
+-- Register achievement definitions (server-side)
+lib.achievements.register({
+    id = 'FIRST_LOGIN',
+    name = 'First Login',
+    description = 'Player joined the server for the first time'
+})
+
+-- Unlock when condition met
+lib.achievements:unlock(source, 'FIRST_LOGIN')
+
+-- Check status
+local hasIt = lib.achievements:isUnlocked(source, 'FIRST_LOGIN')
+
+-- Retrieve all unlocked achievements for a player
+local list = lib.achievements:getAll(source)
+```
+
+### Available Methods
+
+- `register(id, name, description)` – Register a new achievement definition.
+- `unlock(src, id)` – Unlock an achievement for a player.
+- `isUnlocked(src, id)` – Check if a player has unlocked a specific achievement.
+- `getAll(src)` – Get a table of all achievements unlocked by a player.
+
+The module resides at `imports/achievements.lua` and is resolved automatically the first time `lib.achievements` is referenced.
