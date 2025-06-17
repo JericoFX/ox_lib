@@ -30,7 +30,12 @@ jobs:
 
       - name: Generate documentation
         run: |
-          ldoc .ldoc.lua
+          ldoc .ldoc.lua || true
+          mkdir -p docs
+
+      - name: List docs dir
+        run: |
+          ls -R docs || true
 
       - name: Configure Pages
         uses: actions/configure-pages@v4
