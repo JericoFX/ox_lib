@@ -8,6 +8,12 @@ end
 
 local ESX = exports['es_extended']:getSharedObject()
 
+-- Caching tables
+local playerCache = {}
+local normalizedCache = {}
+local frameCache = {}
+local lastFrame = 0
+
 local function normalizePlayer(esxPlayer)
     if not esxPlayer then return nil end
 
@@ -67,62 +73,105 @@ local function normalizePlayer(esxPlayer)
     }
 end
 
-return {
-    getPlayer = function(source)
-        local esxPlayer = ESX.GetPlayerFromId(source)
-        return normalizePlayer(esxPlayer)
-    end,
+-- Returns ESX player object with per-frame micro-cache and long cache cleared on invalidation
+local function getCachedESXPlayer(source)
+    local currentFrame = GetFrameCount()
+    if currentFrame ~= lastFrame then
+        frameCache = {}
+        lastFrame = currentFrame
+    end
 
-    getPlayerByIdentifier = function(identifier)
+    if frameCache[source] then
+        return frameCache[source]
+    end
+
+    if playerCache[source] then
+        frameCache[source] = playerCache[source]
+        return playerCache[source]
+    end
+
+    local esxPlayer = ESX.GetPlayerFromId(source)
+    playerCache[source] = esxPlayer
+    frameCache[source] = esxPlayer
+    return esxPlayer
+end
+
+-- Returns normalized player with caching
+local function getNormalizedPlayer(source)
+    if normalizedCache[source] then
+        -- quick return if cached
+        return normalizedCache[source]
+    end
+
+    local esxPlayer = getCachedESXPlayer(source)
+    local normalized = normalizePlayer(esxPlayer)
+    normalizedCache[source] = normalized
+    return normalized
+end
+
+-- Adjust invalidate function to also clear normalized cache
+local function invalidatePlayerCache(source)
+    playerCache[source] = nil
+    normalizedCache[source] = nil
+    frameCache[source] = nil
+end
+
+-- Invalidate when player disconnects
+AddEventHandler('playerDropped', function()
+    local src = source
+    invalidatePlayerCache(src)
+end)
+
+local coreWrapper = {
+    -- Unified API
+    player = function(source)
+        return getNormalizedPlayer(source)
+    end,
+    playerByIdentifier = function(identifier)
+        -- Identifier lookups are infrequent; no cache needed
         local esxPlayer = ESX.GetPlayerFromIdentifier(identifier)
         return normalizePlayer(esxPlayer)
     end,
-
-    getAllPlayers = function()
-        local players = {}
+    players = function()
+        local list = {}
         local esxPlayers = ESX.GetExtendedPlayers()
-
         for i = 1, #esxPlayers do
-            players[#players + 1] = normalizePlayer(esxPlayers[i])
+            local src = esxPlayers[i].source
+            list[#list + 1] = getNormalizedPlayer(src)
         end
-
-        return players
+        return list
     end,
-
-    addMoney = function(source, money, account)
-        local player = ESX.GetPlayerFromId(source)
+    walletAdd = function(source, amount, account)
+        local player = getCachedESXPlayer(source)
         if not player then return false end
-
         account = account or 'cash'
         if account == 'cash' then
-            player.addMoney(money)
+            player.addMoney(amount)
         elseif account == 'bank' then
-            player.addAccountMoney('bank', money)
+            player.addAccountMoney('bank', amount)
         else
-            player.addAccountMoney(account, money)
+            player.addAccountMoney(account, amount)
         end
+        invalidatePlayerCache(source)
         return true
     end,
-
-    removeMoney = function(source, money, account)
-        local player = ESX.GetPlayerFromId(source)
+    walletRemove = function(source, amount, account)
+        local player = getCachedESXPlayer(source)
         if not player then return false end
-
         account = account or 'cash'
         if account == 'cash' then
-            player.removeMoney(money)
+            player.removeMoney(amount)
         elseif account == 'bank' then
-            player.removeAccountMoney('bank', money)
+            player.removeAccountMoney('bank', amount)
         else
-            player.removeAccountMoney(account, money)
+            player.removeAccountMoney(account, amount)
         end
+        invalidatePlayerCache(source)
         return true
     end,
-
-    getMoney = function(source, account)
-        local player = ESX.GetPlayerFromId(source)
+    wallet = function(source, account)
+        local player = getCachedESXPlayer(source)
         if not player then return 0 end
-
         account = account or 'cash'
         if account == 'cash' then
             return player.getMoney()
@@ -132,26 +181,23 @@ return {
             return player.getAccount(account).money
         end
     end,
-
-    getJob = function(source)
-        local player = ESX.GetPlayerFromId(source)
+    role = function(source)
+        local player = getCachedESXPlayer(source)
         if not player then return nil end
-
         return player.job.name
     end,
-
-    getJobGrade = function(source)
-        local player = ESX.GetPlayerFromId(source)
+    roleGrade = function(source)
+        local player = getCachedESXPlayer(source)
         if not player then return nil end
-
         return player.job.grade
     end,
-
-    setJob = function(source, job, grade)
-        local player = ESX.GetPlayerFromId(source)
+    roleSet = function(source, job, grade)
+        local player = getCachedESXPlayer(source)
         if not player then return false end
-
         player.setJob(job, grade or 0)
+        invalidatePlayerCache(source)
         return true
     end
 }
+
+return coreWrapper

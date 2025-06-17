@@ -9,61 +9,47 @@ end
 local Core = lib.class('Core')
 local ESX = exports['es_extended']:getSharedObject()
 
--- Data normalization function
-local function normalizePlayerData(playerData)
-    if not playerData then return nil end
+local normalize = require 'wrappers.core.normalizer'
 
-    local normalized = {
-        -- Universal identifiers
-        citizenid = playerData.identifier,
-        identifier = playerData.identifier,
-        name = playerData.name,
+local esxMap = {
+    id   = 'identifier',
+    name = 'name',
 
-        -- Job data
-        job = {
-            name = playerData.job and playerData.job.name or 'unemployed',
-            label = playerData.job and playerData.job.label or 'Unemployed',
-            grade = playerData.job and playerData.job.grade or 0,
-            salary = playerData.job and playerData.job.grade_salary or 0,
-            onduty = true -- ESX doesn't handle duty by default
-        },
+    job = function(pd)
+        return {
+            name   = pd.job and pd.job.name or 'unemployed',
+            label  = pd.job and pd.job.label or 'Unemployed',
+            grade  = pd.job and pd.job.grade or 0,
+            salary = pd.job and pd.job.grade_salary or 0,
+            onduty = true
+        }
+    end,
 
-        -- Gang data (if exists)
-        gang = playerData.gang and {
-            name = playerData.gang.name,
-            grade = playerData.gang.grade,
-            label = playerData.gang.label
-        } or { name = 'none', grade = 0, label = 'None' },
+    gang = function(pd)
+        return pd.gang and {
+            name  = pd.gang.name,
+            label = pd.gang.label,
+            grade = pd.gang.grade
+        } or { name = 'none', label = 'None', grade = 0 }
+    end,
 
-        -- Money data
-        money = {
-            cash = 0,
-            bank = 0,
-            black_money = 0
-        },
-
-        -- Metadata
-        metadata = playerData.metadata or {},
-
-        -- Original ESX object for advanced usage
-        _original = playerData
-    }
-
-    -- Normalize accounts to money structure
-    if playerData.accounts then
-        for i = 1, #playerData.accounts do
-            local account = playerData.accounts[i]
-            if account.name == 'money' then
-                normalized.money.cash = account.money
-            elseif account.name == 'bank' then
-                normalized.money.bank = account.money
-            elseif account.name == 'black_money' then
-                normalized.money.black_money = account.money
+    money = function(pd)
+        local m = { cash = 0, bank = 0, black_money = 0 }
+        if pd.accounts then
+            for _, acc in ipairs(pd.accounts) do
+                if acc.name == 'money' then m.cash = acc.money
+                elseif acc.name == 'bank' then m.bank = acc.money
+                elseif acc.name == 'black_money' then m.black_money = acc.money end
             end
         end
-    end
+        return m
+    end,
 
-    return normalized
+    metadata = 'metadata'
+}
+
+local function normalizePlayerData(playerData)
+    return normalize(playerData, esxMap)
 end
 
 -- Universal cache management using ox_lib's native cache
@@ -77,7 +63,7 @@ end
 
 local function clearUniversalCache()
     cache:set('playerData', nil)
-    cache:set('citizenid', nil)
+    cache:set('id', nil)
     cache:set('job', nil)
     cache:set('gang', nil)
     cache:set('money', nil)
@@ -91,7 +77,7 @@ local function updatePlayerCache(playerData)
 
     -- Update universal cache (framework-agnostic)
     updateUniversalCache('playerData', normalized)
-    updateUniversalCache('citizenid', normalized.citizenid)
+    updateUniversalCache('id', normalized.id)
     updateUniversalCache('job', normalized.job)
     updateUniversalCache('gang', normalized.gang)
     updateUniversalCache('money', normalized.money)
@@ -241,17 +227,17 @@ function Core:getMoney(account)
 end
 
 function Core:getIdentifier()
-    local citizenid = getFromUniversalCache('citizenid')
-    if citizenid then
-        return citizenid
+    local id = getFromUniversalCache('id')
+    if id then
+        return id
     end
 
     local playerData = self:getPlayerData()
-    return playerData and playerData.citizenid
+    return playerData and playerData.id
 end
 
 function Core:isPlayerLoaded()
-    return getFromUniversalCache('citizenid') ~= nil
+    return getFromUniversalCache('id') ~= nil
 end
 
 -- Gang methods
@@ -298,13 +284,13 @@ function Core:getMetadata(key)
     return key and playerData.metadata[key] or playerData.metadata
 end
 
-function Core:setMetadata(key, value)
-    local metadata = getFromUniversalCache('metadata') or {}
-    metadata[key] = value
-    updateUniversalCache('metadata', metadata)
+-- function Core:setMetadata(key, value)
+--     local metadata = getFromUniversalCache('metadata') or {}
+--     metadata[key] = value
+--     updateUniversalCache('metadata', metadata)
 
-    TriggerServerEvent('esx:setPlayerMetadata', key, value)
-end
+--     TriggerServerEvent('esx:setPlayerMetadata', key, value)
+-- end
 
 -- Framework-specific methods
 function Core:showNotification(message, type, duration)
@@ -326,13 +312,6 @@ function Core:clearCache()
     clearUniversalCache()
 end
 
--- Compatibility methods for QB-Core
-function Core:getCitizenId()
-    return self:getIdentifier()
-end
-
-function Core:isLoggedIn()
-    return self:isPlayerLoaded()
-end
+-- Removed deprecated QB-Core compatibility block
 
 return Core

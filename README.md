@@ -41,6 +41,31 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.banking` - Universal banking wrapper (okokBanking/qb-banking/etc)
 - `lib.tickets` - **NEW!** Advanced ticket system with player reporting and staff management
 
+### 🆕 **Unified Core API Aliases**
+
+Neutral method names available on both client (class, colon `:`) and server (table, dot `.`) wrappers:
+
+**Client (use colon)**
+- `lib.core:player()`
+- `lib.core:role()` / `:roleGrade()` / `:roleLabel()`
+- `lib.core:funds(account?)`
+- `lib.core:id()`
+- `lib.core:isReady()`
+- `lib.core:guild()` / `:guildGrade()` / `:guildLabel()`
+- `lib.core:meta(key?)` / `:setMeta(key, value)`
+- `lib.core:notify(message, type?, duration?)`
+
+**Server (use dot)**
+- `lib.core.player(source)`
+- `lib.core.players()`
+- `lib.core.walletAdd(source, amount, account?)`
+- `lib.core.walletRemove(source, amount, account?)`
+- `lib.core.wallet(source, account?)`
+- `lib.core.role(source)` / `roleGrade(source)` / `roleSet(source, job, grade?)`
+- `lib.core.guild(source)` / `guildSet(source, gang, grade?)`
+
+These aliases complement the existing method names (`getJob`, `addMoney`, etc.) and provide a framework-neutral nomenclature without breaking backward compatibility.
+
 ### ✨ **Key Features**
 
 - **Auto-detection** of installed frameworks/systems
@@ -51,6 +76,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - **Singleton pattern** for direct access
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
+- **Shared Player Data Normalizer** centralises framework-specific mappings into `wrappers/core/normalizer.lua`, reducing duplication across wrappers.
 
 ---
 

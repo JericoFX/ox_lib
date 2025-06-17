@@ -11,6 +11,7 @@ local QBCore = exports['qb-core']:GetCoreObject()
 
 local playerCache = {}
 local frameCache = {}
+local normalizedCache = {}
 local lastFrame = 0
 local CACHE_TTL = 150
 
@@ -59,32 +60,6 @@ local function getCachedQBPlayer(source)
     
     return qbPlayer
 end
-
-local function invalidatePlayerCache(source)
-    if playerCache[source] then
-        playerCache[source] = nil
-    end
-    if frameCache[source] then
-        frameCache[source] = nil
-    end
-end
-
-AddEventHandler('playerDropped', function()
-    local source = source
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:moneyChange', function()
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:jobUpdate', function()
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:gangUpdate', function()
-    invalidatePlayerCache(source)
-end)
 
 local function normalizePlayer(qbPlayer)
     if not qbPlayer then return nil end
@@ -140,49 +115,82 @@ local function normalizePlayer(qbPlayer)
     }
 end
 
+local function getNormalizedPlayer(source)
+    if normalizedCache[source] then return normalizedCache[source] end
+    local qbPlayer = getCachedQBPlayer(source)
+    local normalized = normalizePlayer(qbPlayer)
+    normalizedCache[source] = normalized
+    return normalized
+end
+
+local function invalidatePlayerCache(source)
+    if playerCache[source] then
+        playerCache[source] = nil
+    end
+    if frameCache[source] then
+        frameCache[source] = nil
+    end
+    normalizedCache[source] = nil
+end
+
+AddEventHandler('playerDropped', function()
+    local source = source
+    invalidatePlayerCache(source)
+end)
+
+RegisterNetEvent('qb-core:server:moneyChange', function()
+    invalidatePlayerCache(source)
+end)
+
+RegisterNetEvent('qb-core:server:jobUpdate', function()
+    invalidatePlayerCache(source)
+end)
+
+RegisterNetEvent('qb-core:server:gangUpdate', function()
+    invalidatePlayerCache(source)
+end)
+
 local coreWrapper = {
-    getPlayer = function(source)
-        local qbPlayer = getCachedQBPlayer(source)
-        return normalizePlayer(qbPlayer)
+    player = function(source)
+        return getNormalizedPlayer(source)
     end,
 
-    getPlayerByIdentifier = function(identifier)
+    playerByIdentifier = function(identifier)
         local qbPlayer = QBCore.Functions.GetPlayerByCitizenId(identifier)
         return normalizePlayer(qbPlayer)
     end,
 
-    getAllPlayers = function()
-        local players = {}
+    players = function()
+        local list = {}
         local qbPlayers = QBCore.Functions.GetQBPlayers()
-
         for _, qbPlayer in pairs(qbPlayers) do
-            players[#players + 1] = normalizePlayer(qbPlayer)
+            local src = qbPlayer.PlayerData.source
+            list[#list + 1] = getNormalizedPlayer(src)
         end
-
-        return players
+        return list
     end,
 
-    addMoney = function(source, money, account)
+    walletAdd = function(source, amount, account)
         local player = getCachedQBPlayer(source)
         if not player then return false end
 
         account = account or 'cash'
-        player.Functions.AddMoney(account, money)
+        player.Functions.AddMoney(account, amount)
         invalidatePlayerCache(source)
         return true
     end,
 
-    removeMoney = function(source, money, account)
+    walletRemove = function(source, amount, account)
         local player = getCachedQBPlayer(source)
         if not player then return false end
 
         account = account or 'cash'
-        player.Functions.RemoveMoney(account, money)
+        player.Functions.RemoveMoney(account, amount)
         invalidatePlayerCache(source)
         return true
     end,
 
-    getMoney = function(source, account)
+    wallet = function(source, account)
         local player = getCachedQBPlayer(source)
         if not player then return 0 end
 
@@ -190,21 +198,21 @@ local coreWrapper = {
         return player.PlayerData.money[account] or 0
     end,
 
-    getJob = function(source)
+    role = function(source)
         local player = getCachedQBPlayer(source)
         if not player then return nil end
 
         return player.PlayerData.job.name
     end,
 
-    getJobGrade = function(source)
+    roleGrade = function(source)
         local player = getCachedQBPlayer(source)
         if not player then return nil end
 
         return player.PlayerData.job.grade.level
     end,
 
-    setJob = function(source, job, grade)
+    roleSet = function(source, job, grade)
         local player = getCachedQBPlayer(source)
         if not player then return false end
 
@@ -213,14 +221,14 @@ local coreWrapper = {
         return true
     end,
 
-    getGang = function(source)
+    guild = function(source)
         local player = getCachedQBPlayer(source)
         if not player then return nil end
 
         return player.PlayerData.gang.name
     end,
 
-    setGang = function(source, gang, grade)
+    guildSet = function(source, gang, grade)
         local player = getCachedQBPlayer(source)
         if not player then return false end
 

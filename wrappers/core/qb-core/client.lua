@@ -10,50 +10,43 @@ end
 local Core = lib.class('Core')
 local QBCore = exports['qb-core']:GetCoreObject()
 
--- Data normalization function
+local normalize = require 'wrappers.core.normalizer'
+
+local qbMap = {
+    id   = 'citizenid',
+    name = function(pd)
+        return pd.charinfo and (pd.charinfo.firstname .. ' ' .. pd.charinfo.lastname) or 'Unknown'
+    end,
+
+    job = function(pd)
+        return {
+            name   = pd.job and pd.job.name or 'unemployed',
+            label  = pd.job and pd.job.label or 'Unemployed',
+            grade  = pd.job and pd.job.grade and pd.job.grade.level or 0,
+            salary = pd.job and pd.job.payment or 0,
+            onduty = pd.job and pd.job.onduty or false
+        }
+    end,
+
+    gang = function(pd)
+        return {
+            name  = pd.gang and pd.gang.name or 'none',
+            label = pd.gang and pd.gang.label or 'None',
+            grade = pd.gang and pd.gang.grade and pd.gang.grade.level or 0
+        }
+    end,
+
+    money = function(pd)
+        return pd.money or { cash = 0, bank = 0, crypto = 0 }
+    end,
+
+    charinfo = function(pd) return pd.charinfo or {} end,
+
+    metadata = 'metadata'
+}
+
 local function normalizePlayerData(playerData)
-    if not playerData then return nil end
-
-    local normalized = {
-        -- Universal identifiers
-        citizenid = playerData.citizenid,
-        identifier = playerData.citizenid,
-        name = playerData.charinfo and (playerData.charinfo.firstname .. ' ' .. playerData.charinfo.lastname) or 'Unknown',
-
-        -- Job data
-        job = {
-            name = playerData.job and playerData.job.name or 'unemployed',
-            label = playerData.job and playerData.job.label or 'Unemployed',
-            grade = playerData.job and playerData.job.grade and playerData.job.grade.level or 0,
-            salary = playerData.job and playerData.job.payment or 0,
-            onduty = playerData.job and playerData.job.onduty or false
-        },
-
-        -- Gang data
-        gang = {
-            name = playerData.gang and playerData.gang.name or 'none',
-            label = playerData.gang and playerData.gang.label or 'None',
-            grade = playerData.gang and playerData.gang.grade and playerData.gang.grade.level or 0
-        },
-
-        -- Money data
-        money = {
-            cash = playerData.money and playerData.money.cash or 0,
-            bank = playerData.money and playerData.money.bank or 0,
-            crypto = playerData.money and playerData.money.crypto or 0
-        },
-
-        -- Character info
-        charinfo = playerData.charinfo or {},
-
-        -- Metadata
-        metadata = playerData.metadata or {},
-
-        -- Original QB-Core object for advanced usage
-        _original = playerData
-    }
-
-    return normalized
+    return normalize(playerData, qbMap)
 end
 
 -- Universal cache management using ox_lib's native cache
@@ -67,7 +60,7 @@ end
 
 local function clearUniversalCache()
     cache:set('playerData', nil)
-    cache:set('citizenid', nil)
+    cache:set('id', nil)
     cache:set('job', nil)
     cache:set('gang', nil)
     cache:set('money', nil)
@@ -81,7 +74,7 @@ local function updatePlayerCache(playerData)
 
     -- Update universal cache (framework-agnostic)
     updateUniversalCache('playerData', normalized)
-    updateUniversalCache('citizenid', normalized.citizenid)
+    updateUniversalCache('id', normalized.id)
     updateUniversalCache('job', normalized.job)
     updateUniversalCache('gang', normalized.gang)
     updateUniversalCache('money', normalized.money)
@@ -220,17 +213,17 @@ function Core:getMoney(account)
 end
 
 function Core:getIdentifier()
-    local citizenid = getFromUniversalCache('citizenid')
-    if citizenid then
-        return citizenid
+    local id = getFromUniversalCache('id')
+    if id then
+        return id
     end
 
     local playerData = self:getPlayerData()
-    return playerData and playerData.citizenid
+    return playerData and playerData.id
 end
 
 function Core:isPlayerLoaded()
-    return getFromUniversalCache('citizenid') ~= nil
+    return getFromUniversalCache('id') ~= nil
 end
 
 -- Gang methods
@@ -327,13 +320,6 @@ function Core:clearCache()
     clearUniversalCache()
 end
 
--- Compatibility methods for ESX
-function Core:getCitizenId()
-    return self:getIdentifier()
-end
-
-function Core:isLoggedIn()
-    return self:isPlayerLoaded()
-end
+-- Removed deprecated ESX compatibility block
 
 return Core

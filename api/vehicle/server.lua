@@ -852,3 +852,61 @@ function lib.vehicle.getPlayerVehicle(source)
     end
     return nil
 end
+
+-- =====================================
+-- SYNC SYSTEM SERVER EVENTS
+-- =====================================
+
+---Validate if player has access to vehicle
+---@param playerId number Player ID
+---@param networkId number Vehicle network ID
+---@return boolean hasAccess True if player has access
+function lib.vehicle.hasAccess(playerId, networkId)
+    local vehicle = NetworkGetEntityFromNetworkId(networkId)
+    if not DoesEntityExist(vehicle) then return false end
+    
+    local playerPed = GetPlayerPed(playerId)
+    local playerCoords = GetEntityCoords(playerPed)
+    local vehicleCoords = GetEntityCoords(vehicle)
+    
+    if #(playerCoords - vehicleCoords) > 10.0 then return false end
+    
+    local driver = GetPedInVehicleSeat(vehicle, -1)
+    if driver == playerPed then return true end
+    
+    return true
+end
+
+---Handle vehicle properties changes
+RegisterNetEvent('ox_lib:vehiclePropertiesChanged', function(networkId, properties)
+    local source = source
+    local vehicle = NetworkGetEntityFromNetworkId(networkId)
+    
+    if not DoesEntityExist(vehicle) then return end
+    
+    if not lib.vehicle.hasAccess(source, networkId) then
+        print(('Player %s attempted to modify vehicle %s without permission'):format(source, networkId))
+        return
+    end
+    
+    if lib.vehicle.config and lib.vehicle.config.logPropertyChanges then
+        lib.logger.info('vehicle_properties_changed', {
+            player = source,
+            vehicle = networkId,
+            properties = properties
+        })
+    end
+end)
+
+---Handle trailer attachment sync
+RegisterNetEvent('ox_lib:syncTrailerAttachment', function(data)
+    local source = source
+    
+    if not lib.vehicle.hasAccess(source, data.towVehicle) then
+        return
+    end
+    
+    TriggerClientEvent('ox_lib:trailerAttachmentUpdate', -1, data)
+end)
+
+return lib.vehicle

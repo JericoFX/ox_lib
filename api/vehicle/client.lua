@@ -278,6 +278,600 @@ function lib.vehicle.createMultiple(vehicles, callback)
 end
 
 -- =====================================
+-- VEHICLE SYNC SYSTEM WITH STATEBAGS
+-- =====================================
+
+---Initialize vehicle sync system
+function lib.vehicle:initSync()
+    if not self:isValid() then return false end
+    
+    local properties = self:getProperties()
+    Entity(self.vehicle).state:set('vehicleProperties', properties, true)
+    
+    return true
+end
+
+---Sync vehicle properties using StateBags
+---@param properties? table Specific properties to sync (optional, will get current if nil)
+---@return boolean success True if sync was initiated
+function lib.vehicle:syncProperties(properties)
+    if not self:isValid() then return false end
+    
+    properties = properties or self:getProperties()
+    Entity(self.vehicle).state:set('vehicleProperties', properties, true)
+    
+    return true
+end
+
+---Set properties and auto-sync
+---@param properties table Vehicle properties
+---@param fixVehicle? boolean Fix vehicle after setting
+---@return boolean success
+function lib.vehicle:setPropertiesAndSync(properties, fixVehicle)
+    if not self:isValid() then return false end
+    
+    local success = self:setProperties(properties, fixVehicle)
+    if success then
+        self:syncProperties(properties)
+    end
+    
+    return success
+end
+
+---Get synced properties from StateBag
+---@return table? properties Synced properties or nil
+function lib.vehicle:getSyncedProperties()
+    if not self:isValid() then return nil end
+    
+    return Entity(self.vehicle).state.vehicleProperties
+end
+
+---Set custom vehicle state
+---@param key string State key
+---@param value any State value
+---@param replicated? boolean Whether to replicate to other clients
+---@return boolean success
+function lib.vehicle:setState(key, value, replicated)
+    if not self:isValid() then return false end
+    
+    Entity(self.vehicle).state:set(key, value, replicated ~= false)
+    return true
+end
+
+---Get custom vehicle state
+---@param key string State key
+---@return any value State value
+function lib.vehicle:getState(key)
+    if not self:isValid() then return nil end
+    
+    return Entity(self.vehicle).state[key]
+end
+
+-- =====================================
+-- VEHICLE DIMENSIONS AND POSITIONING
+-- =====================================
+
+---Get vehicle dimensions (length, width, height)
+---@return table? dimensions {length: number, width: number, height: number}
+function lib.vehicle:getDimensions()
+    if not self:isValid() then return nil end
+    
+    local min, max = GetModelDimensions(self:getModel())
+    
+    return {
+        length = max.y - min.y,
+        width = max.x - min.x,
+        height = max.z - min.z,
+        min = min,
+        max = max
+    }
+end
+
+---Get front position of vehicle with optional offset
+---@param offset? number Additional offset from front (default: 2.5)
+---@return vector3? frontPos Front position coordinates
+function lib.vehicle:getFrontPosition(offset)
+    if not self:isValid() then return nil end
+    
+    offset = offset or 2.5
+    local coords = self:getCoords()
+    local dimensions = self:getDimensions()
+    local heading = math.rad(self:getHeading())
+    
+    local frontDistance = (dimensions.length / 2) + offset
+    
+    local frontPos = vector3(
+        coords.x + math.sin(-heading) * frontDistance,
+        coords.y + math.cos(-heading) * frontDistance,
+        coords.z
+    )
+    
+    return frontPos
+end
+
+---Get rear position of vehicle with optional offset
+---@param offset? number Additional offset from rear (default: 2.5)
+---@return vector3? rearPos Rear position coordinates
+function lib.vehicle:getRearPosition(offset)
+    if not self:isValid() then return nil end
+    
+    offset = offset or 2.5
+    local coords = self:getCoords()
+    local dimensions = self:getDimensions()
+    local heading = math.rad(self:getHeading())
+    
+    local rearDistance = (dimensions.length / 2) + offset
+    
+    local rearPos = vector3(
+        coords.x - math.sin(-heading) * rearDistance,
+        coords.y - math.cos(-heading) * rearDistance,
+        coords.z
+    )
+    
+    return rearPos
+end
+
+---Get left side position of vehicle with optional offset
+---@param offset? number Additional offset from left side (default: 2.0)
+---@return vector3? leftPos Left side position coordinates
+function lib.vehicle:getLeftPosition(offset)
+    if not self:isValid() then return nil end
+    
+    offset = offset or 2.0
+    local coords = self:getCoords()
+    local dimensions = self:getDimensions()
+    local heading = math.rad(self:getHeading())
+    
+    local sideDistance = (dimensions.width / 2) + offset
+    
+    local leftPos = vector3(
+        coords.x + math.cos(heading) * sideDistance,
+        coords.y + math.sin(heading) * sideDistance,
+        coords.z
+    )
+    
+    return leftPos
+end
+
+---Get right side position of vehicle with optional offset
+---@param offset? number Additional offset from right side (default: 2.0)
+---@return vector3? rightPos Right side position coordinates
+function lib.vehicle:getRightPosition(offset)
+    if not self:isValid() then return nil end
+    
+    offset = offset or 2.0
+    local coords = self:getCoords()
+    local dimensions = self:getDimensions()
+    local heading = math.rad(self:getHeading())
+    
+    local sideDistance = (dimensions.width / 2) + offset
+    
+    local rightPos = vector3(
+        coords.x - math.cos(heading) * sideDistance,
+        coords.y - math.sin(heading) * sideDistance,
+        coords.z
+    )
+    
+    return rightPos
+end
+
+---Get all cardinal positions around vehicle
+---@param offset? number Offset distance (default: 2.5)
+---@return table positions {front: vector3, rear: vector3, left: vector3, right: vector3}
+function lib.vehicle:getAllPositions(offset)
+    if not self:isValid() then return {} end
+    
+    return {
+        front = self:getFrontPosition(offset),
+        rear = self:getRearPosition(offset),
+        left = self:getLeftPosition(offset or 2.0),
+        right = self:getRightPosition(offset or 2.0)
+    }
+end
+
+---Check if position is clear (no obstacles)
+---@param position vector3 Position to check
+---@param radius? number Check radius (default: 1.5)
+---@return boolean clear True if position is clear
+function lib.vehicle:isPositionClear(position, radius)
+    radius = radius or 1.5
+    
+    local nearbyVehicles = lib.getNearbyVehicles(position, radius, true)
+    if #nearbyVehicles > 0 then return false end
+    
+    local nearbyObjects = lib.getNearbyObjects(position, radius, true)
+    if #nearbyObjects > 0 then return false end
+    
+    return true
+end
+
+---Find the best clear position around vehicle
+---@param preferredSide? string Preferred side ('front', 'rear', 'left', 'right')
+---@param offset? number Offset distance (default: 2.5)
+---@return vector3? position Best available position or nil
+function lib.vehicle:getBestClearPosition(preferredSide, offset)
+    if not self:isValid() then return nil end
+    
+    local positions = self:getAllPositions(offset)
+    
+    if preferredSide and positions[preferredSide] then
+        if self:isPositionClear(positions[preferredSide]) then
+            return positions[preferredSide]
+        end
+    end
+    
+    local priorityOrder = {'front', 'rear', 'left', 'right'}
+    
+    for _, side in ipairs(priorityOrder) do
+        if side ~= preferredSide and positions[side] then
+            if self:isPositionClear(positions[side]) then
+                return positions[side]
+            end
+        end
+    end
+    
+    return nil
+end
+
+---Calculate distance between vehicle and target
+---@param target vector3|number Target coordinates or entity
+---@param fromSide? string Calculate from specific side ('front', 'rear', 'left', 'right')
+---@return number distance Distance in units
+function lib.vehicle:getDistanceTo(target, fromSide)
+    if not self:isValid() then return 0.0 end
+    
+    local vehiclePos
+    
+    if fromSide then
+        local positions = self:getAllPositions()
+        vehiclePos = positions[fromSide] or self:getCoords()
+    else
+        vehiclePos = self:getCoords()
+    end
+    
+    local targetPos
+    if type(target) == 'number' then
+        targetPos = GetEntityCoords(target)
+    else
+        targetPos = target
+    end
+    
+    return #(vehiclePos - targetPos)
+end
+
+---Get closest approach distance to another vehicle
+---@param otherVehicle number|lib.vehicle Other vehicle entity or instance
+---@return number distance Closest distance between vehicle edges
+function lib.vehicle:getClosestDistanceTo(otherVehicle)
+    if not self:isValid() then return 0.0 end
+    
+    local otherEntity = otherVehicle
+    if type(otherVehicle) == 'table' and otherVehicle.vehicle then
+        otherEntity = otherVehicle.vehicle
+    end
+    
+    if not DoesEntityExist(otherEntity) then return 0.0 end
+    
+    local myPositions = self:getAllPositions(0)
+    local otherInstance = lib.vehicle.fromEntity(otherEntity)
+    local otherPositions = otherInstance:getAllPositions(0)
+    
+    local minDistance = math.huge
+    
+    for _, myPos in pairs(myPositions) do
+        for _, otherPos in pairs(otherPositions) do
+            local distance = #(myPos - otherPos)
+            if distance < minDistance then
+                minDistance = distance
+            end
+        end
+    end
+    
+    return minDistance
+end
+
+---Get spawn position relative to vehicle
+---@param side string Side to spawn ('front', 'rear', 'left', 'right')
+---@param distance? number Distance from vehicle (default: uses vehicle length + 2.5)
+---@param findClear? boolean Find clear position automatically (default: true)
+---@return vector3? position Spawn position or nil if not available
+function lib.vehicle:getSpawnPosition(side, distance, findClear)
+    if not self:isValid() then return nil end
+    
+    findClear = findClear ~= false
+    
+    if not distance then
+        local dimensions = self:getDimensions()
+        distance = dimensions.length + 2.5
+    end
+    
+    local position
+    if side == 'front' then
+        position = self:getFrontPosition(distance)
+    elseif side == 'rear' then
+        position = self:getRearPosition(distance)
+    elseif side == 'left' then
+        position = self:getLeftPosition(distance)
+    elseif side == 'right' then
+        position = self:getRightPosition(distance)
+    else
+        return nil
+    end
+    
+    if findClear and not self:isPositionClear(position) then
+        return self:getBestClearPosition(side, distance)
+    end
+    
+    return position
+end
+
+-- =====================================
+-- TOWING AND ATTACHMENT SYSTEM
+-- =====================================
+
+---Check if vehicle can tow another vehicle
+---@param targetVehicle number Target vehicle entity
+---@return boolean canTow True if towing is possible
+function lib.vehicle:canTowVehicle(targetVehicle)
+    if not self:isValid() then return false end
+    
+    local targetInstance = lib.vehicle.fromEntity(targetVehicle)
+    if not targetInstance then return false end
+    
+    local vehicleClass = self:getClass()
+    local canTow = lib.enums.vehicles.TOW_CAPABLE[vehicleClass] or false
+    
+    if not canTow then return false end
+    
+    local targetClass = targetInstance:getClass()
+    local canBeTowed = lib.enums.vehicles.TOWABLE[targetClass] or false
+    
+    return canBeTowed
+end
+
+---Attach trailer to vehicle
+---@param trailerVehicle number Trailer vehicle entity
+---@param callback? fun(success: boolean, message: string) Callback function
+---@return boolean started True if attachment process started
+function lib.vehicle:attachTrailer(trailerVehicle, callback)
+    if not self:isValid() then 
+        if callback then callback(false, 'Invalid tow vehicle') end
+        return false 
+    end
+    
+    if not self:canTowVehicle(trailerVehicle) then
+        if callback then callback(false, 'Vehicles not compatible for towing') end
+        return false
+    end
+    
+    local towCoords = self:getCoords()
+    local trailerCoords = GetEntityCoords(trailerVehicle)
+    local distance = #(towCoords - trailerCoords)
+    
+    if distance > 10.0 then
+        if callback then callback(false, 'Vehicles too far apart') end
+        return false
+    end
+    
+    AttachVehicleToTrailer(self.vehicle, trailerVehicle, 5.0)
+    
+    CreateThread(function()
+        Wait(500)
+        local isAttached = IsVehicleAttachedToTrailer(self.vehicle)
+        
+        if isAttached then
+            self:setState('trailerAttached', NetworkGetNetworkIdFromEntity(trailerVehicle), true)
+            TriggerServerEvent('ox_lib:syncTrailerAttachment', {
+                towVehicle = NetworkGetNetworkIdFromEntity(self.vehicle),
+                trailer = NetworkGetNetworkIdFromEntity(trailerVehicle),
+                attached = true
+            })
+            
+            if callback then callback(true, 'Trailer attached successfully') end
+        else
+            if callback then callback(false, 'Failed to attach trailer') end
+        end
+    end)
+    
+    return true
+end
+
+---Detach trailer from vehicle
+---@param callback? fun(success: boolean, message: string) Callback function
+---@return boolean started True if detachment process started
+function lib.vehicle:detachTrailer(callback)
+    if not self:isValid() then 
+        if callback then callback(false, 'Invalid vehicle') end
+        return false 
+    end
+    
+    if not IsVehicleAttachedToTrailer(self.vehicle) then
+        if callback then callback(false, 'No trailer attached') end
+        return false
+    end
+    
+    DetachVehicleFromTrailer(self.vehicle)
+    
+    CreateThread(function()
+        Wait(500)
+        local isDetached = not IsVehicleAttachedToTrailer(self.vehicle)
+        
+        if isDetached then
+            self:setState('trailerAttached', nil, true)
+            TriggerServerEvent('ox_lib:syncTrailerAttachment', {
+                towVehicle = NetworkGetNetworkIdFromEntity(self.vehicle),
+                trailer = nil,
+                attached = false
+            })
+            
+            if callback then callback(true, 'Trailer detached successfully') end
+        else
+            if callback then callback(false, 'Failed to detach trailer') end
+        end
+    end)
+    
+    return true
+end
+
+---Find nearby compatible trailers
+---@param radius? number Search radius (default: 15.0)
+---@return table trailers List of compatible trailers
+function lib.vehicle:findNearbyTrailers(radius)
+    if not self:isValid() then return {} end
+    
+    radius = radius or 15.0
+    local coords = self:getCoords()
+    local nearbyVehicles = lib.getNearbyVehicles(coords, radius, true)
+    local compatibleTrailers = {}
+    
+    for _, vehicleData in ipairs(nearbyVehicles) do
+        if vehicleData.vehicle ~= self.vehicle then
+            if self:canTowVehicle(vehicleData.vehicle) then
+                table.insert(compatibleTrailers, {
+                    vehicle = vehicleData.vehicle,
+                    distance = vehicleData.distance,
+                    instance = lib.vehicle.fromEntity(vehicleData.vehicle)
+                })
+            end
+        end
+    end
+    
+    table.sort(compatibleTrailers, function(a, b) return a.distance < b.distance end)
+    
+    return compatibleTrailers
+end
+
+-- =====================================
+-- SPECIAL VEHICLE FUNCTIONS
+-- =====================================
+
+---Get special vehicle type
+---@return string? specialType Type of special vehicle or nil
+function lib.vehicle:getSpecialType()
+    if not self:isValid() then return nil end
+    
+    local modelName = self:getModelName()
+    
+    local specialTypes = {
+        ['TOWTRUCK'] = 'tow_truck',
+        ['TOWTRUCK2'] = 'tow_truck',
+        ['FLATBED'] = 'flatbed',
+        ['FIRETRUK'] = 'fire_truck',
+        ['AMBULANCE'] = 'ambulance',
+        ['POLICE'] = 'police',
+        ['POLICE2'] = 'police',
+        ['POLICE3'] = 'police',
+        ['SHERIFF'] = 'police',
+        ['RIOT'] = 'swat',
+        ['BUZZARD'] = 'helicopter',
+        ['BUZZARD2'] = 'helicopter'
+    }
+    
+    return specialTypes[modelName] or nil
+end
+
+---Get tow truck hook position
+---@return vector3? hookPos Hook position or nil
+function lib.vehicle:getTowTruckHook()
+    if not self:isValid() then return nil end
+    
+    local specialType = self:getSpecialType()
+    if specialType ~= 'tow_truck' and specialType ~= 'flatbed' then
+        return nil
+    end
+    
+    local hookBone = GetEntityBoneIndexByName(self.vehicle, 'hook')
+    if hookBone ~= -1 then
+        return GetWorldPositionOfEntityBone(self.vehicle, hookBone)
+    end
+    
+    local coords = self:getCoords()
+    return coords + GetEntityForwardVector(self.vehicle) * -4.0
+end
+
+---Tow vehicle with hook mechanism
+---@param targetVehicle number Target vehicle entity
+---@param callback? fun(success: boolean, message: string) Callback function
+---@return boolean started True if towing process started
+function lib.vehicle:towVehicleWithHook(targetVehicle, callback)
+    if not self:isValid() then 
+        if callback then callback(false, 'Invalid tow truck') end
+        return false 
+    end
+    
+    local specialType = self:getSpecialType()
+    if specialType ~= 'tow_truck' and specialType ~= 'flatbed' then
+        if callback then callback(false, 'Vehicle is not a tow truck') end
+        return false
+    end
+    
+    local hookPos = self:getTowTruckHook()
+    local targetCoords = GetEntityCoords(targetVehicle)
+    local distance = #(hookPos - targetCoords)
+    
+    if distance > 8.0 then
+        if callback then callback(false, 'Target vehicle too far from hook') end
+        return false
+    end
+    
+    local playerPed = cache.ped
+    TaskStartScenarioInPlace(playerPed, 'WORLD_HUMAN_WELDING', 0, true)
+    
+    CreateThread(function()
+        Wait(5000)
+        ClearPedTasks(playerPed)
+        
+        AttachEntityToEntity(
+            targetVehicle, 
+            self.vehicle, 
+            GetEntityBoneIndexByName(self.vehicle, 'hook'),
+            0.0, -2.0, 1.0,
+            0.0, 0.0, 0.0,
+            false, false, false, false, 0, true
+        )
+        
+        if IsEntityAttachedToEntity(targetVehicle, self.vehicle) then
+            self:setState('towedVehicle', NetworkGetNetworkIdFromEntity(targetVehicle), true)
+            if callback then callback(true, 'Vehicle towed successfully') end
+        else
+            if callback then callback(false, 'Failed to tow vehicle') end
+        end
+    end)
+    
+    return true
+end
+
+---Set emergency lights for emergency vehicles
+---@param state boolean Light state
+---@param pattern? number Light pattern (default: 1)
+---@return boolean success True if lights were set
+function lib.vehicle:setEmergencyLights(state, pattern)
+    if not self:isValid() then return false end
+    
+    local specialType = self:getSpecialType()
+    if specialType ~= 'police' and specialType ~= 'fire_truck' and specialType ~= 'ambulance' then
+        return false
+    end
+    
+    pattern = pattern or 1
+    
+    if state then
+        SetVehicleSiren(self.vehicle, true)
+        SetVehicleHasMutedSirens(self.vehicle, false)
+        
+        if pattern == 2 then
+            SetVehicleHasMutedSirens(self.vehicle, true)
+        end
+    else
+        SetVehicleSiren(self.vehicle, false)
+    end
+    
+    self:setState('emergencyLights', state, true)
+    
+    return true
+end
+
+-- =====================================
 -- CLIENT FUNCTIONS
 -- =====================================
 
@@ -473,6 +1067,48 @@ function lib.vehicle:setLocked(state)
     if not self:isValid() then return false end
     SetVehicleDoorsLocked(self.vehicle, state and 2 or 1)
     return true
+end
+
+---Set vehicle locked state and sync
+---@param state boolean Lock state
+---@return boolean success
+function lib.vehicle:setLockedAndSync(state)
+    if not self:isValid() then return false end
+    
+    local success = self:setLocked(state)
+    if success then
+        self:setState('isLocked', state, true)
+    end
+    
+    return success
+end
+
+---Set engine state and sync
+---@param state boolean Engine state
+---@return boolean success
+function lib.vehicle:setEngineAndSync(state)
+    if not self:isValid() then return false end
+    
+    local success = self:setEngineOn(state)
+    if success then
+        self:setState('engineOn', state, true)
+    end
+    
+    return success
+end
+
+---Set fuel level and sync
+---@param level number Fuel level (0-100)
+---@return boolean success
+function lib.vehicle:setFuelAndSync(level)
+    if not self:isValid() then return false end
+    
+    local success = self:setFuelLevel(level)
+    if success then
+        self:setState('fuelLevel', level, true)
+    end
+    
+    return success
 end
 
 function lib.vehicle:openDoor(door, loose, instantly)
@@ -810,6 +1446,144 @@ function lib.vehicle.deleteInArea(coords, radius, callback, filterFunction)
     end)
 
     return true
+end
+
+-- =====================================
+-- STATIC UTILITY FUNCTIONS
+-- =====================================
+
+---Static function to calculate safe distance between two vehicles
+---@param vehicle1 number First vehicle entity
+---@param vehicle2 number Second vehicle entity
+---@return number distance Safe distance needed between vehicles
+function lib.vehicle.calculateSafeDistance(vehicle1, vehicle2)
+    if not DoesEntityExist(vehicle1) or not DoesEntityExist(vehicle2) then
+        return 5.0
+    end
+    
+    local v1_dimensions = lib.vehicle.fromEntity(vehicle1):getDimensions()
+    local v2_dimensions = lib.vehicle.fromEntity(vehicle2):getDimensions()
+    
+    local v1_length = v1_dimensions and v1_dimensions.length or 4.0
+    local v2_length = v2_dimensions and v2_dimensions.length or 4.0
+    
+    return (v1_length / 2) + (v2_length / 2) + 2.0
+end
+
+---Static function to find spawn position around any coordinates
+---@param coords vector3 Center coordinates
+---@param vehicleModel string|number Vehicle model to calculate space for
+---@param preferredSide? string Preferred side
+---@return vector3? position Best spawn position
+function lib.vehicle.findSpawnPosition(coords, vehicleModel, preferredSide)
+    local modelHash = type(vehicleModel) == 'string' and joaat(vehicleModel) or vehicleModel
+    local min, max = GetModelDimensions(modelHash)
+    local length = max.y - min.y
+    local width = max.x - min.x
+    
+    local testPositions = {
+        front = coords + vector3(0, length + 2.5, 0),
+        rear = coords + vector3(0, -(length + 2.5), 0),
+        left = coords + vector3(-(width + 2.0), 0, 0),
+        right = coords + vector3(width + 2.0, 0, 0)
+    }
+    
+    if preferredSide and testPositions[preferredSide] then
+        local nearbyVehicles = lib.getNearbyVehicles(testPositions[preferredSide], 3.0, true)
+        if #nearbyVehicles == 0 then
+            return testPositions[preferredSide]
+        end
+    end
+    
+    for side, position in pairs(testPositions) do
+        if side ~= preferredSide then
+            local nearbyVehicles = lib.getNearbyVehicles(position, 3.0, true)
+            if #nearbyVehicles == 0 then
+                return position
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- =====================================
+-- EVENT HANDLERS AND INITIALIZATION
+-- =====================================
+
+---Listen for vehicle property changes via StateBags
+local function setupVehicleStateListener()
+    AddStateBagChangeHandler('vehicleProperties', nil, function(bagName, key, value, source, replicated)
+        if replicated then return end
+        
+        local entityNetId = tonumber(bagName:gsub('entity:', ''))
+        if not entityNetId then return end
+        
+        local entity = NetworkGetEntityFromNetworkId(entityNetId)
+        if not entity or not DoesEntityExist(entity) or not IsEntityAVehicle(entity) then return end
+        
+        if entity ~= cache.vehicle then
+            local vehicleInstance = lib.vehicle.fromEntity(entity)
+            if vehicleInstance and value then
+                vehicleInstance:setProperties(value)
+            end
+        end
+    end)
+end
+
+CreateThread(setupVehicleStateListener)
+
+---Auto-sync when player enters vehicle
+AddEventHandler('ox:playerEnteredVehicle', function(vehicle, seat)
+    local vehicleInstance = lib.vehicle.fromEntity(vehicle)
+    if vehicleInstance then
+        vehicleInstance:initSync()
+    end
+end)
+
+---Handle trailer attachment updates from server
+RegisterNetEvent('ox_lib:trailerAttachmentUpdate', function(data)
+    local towVehicle = NetworkGetEntityFromNetworkId(data.towVehicle)
+    local trailer = data.trailer and NetworkGetEntityFromNetworkId(data.trailer) or nil
+    
+    if DoesEntityExist(towVehicle) then
+        local vehicleInstance = lib.vehicle.fromEntity(towVehicle)
+        if vehicleInstance then
+            if data.attached and trailer and DoesEntityExist(trailer) then
+                vehicleInstance:setState('trailerAttached', data.trailer, false)
+            else
+                vehicleInstance:setState('trailerAttached', nil, false)
+            end
+        end
+    end
+end)
+
+-- =====================================
+-- ENUMS EXTENSION
+-- =====================================
+
+if not lib.enums.vehicles.TOW_CAPABLE then
+    lib.enums.vehicles.TOW_CAPABLE = {
+        ['UTILITY'] = true,
+        ['COMMERCIAL'] = true,
+        ['INDUSTRIAL'] = true,
+        ['SERVICE'] = true
+    }
+end
+
+if not lib.enums.vehicles.TOWABLE then
+    lib.enums.vehicles.TOWABLE = {
+        ['COMPACTS'] = true,
+        ['SEDANS'] = true,
+        ['SUVS'] = true,
+        ['COUPES'] = true,
+        ['SPORTS'] = true,
+        ['SPORTS_CLASSICS'] = true,
+        ['SUPER'] = true,
+        ['MUSCLE'] = true,
+        ['OFF_ROAD'] = true,
+        ['MOTORCYCLES'] = true
+    }
 end
 
 return lib.vehicle
