@@ -11,20 +11,20 @@ pnpm-debug.log*
 /web/node_modules
 /web/build
 
-/c:/Users/eduar/Desktop/ox_lib/documentation
-documentation/NPC_SYSTEM.md
-ARCHITECTURE.md
-documentation/SYSTEMS_OVERVIEW.md
-imports/npc/examples.lua
-api/database/server.lua
-documentation/AUDIO_API.md
-documentation/CAMERA_API.md
-documentation/DAMAGE_API.md
-documentation/STATEBAGS_API.md
-documentation/WEAPONS_API.md
-documentation/README.md
-documentation/README.md
-docs/*
+# /c:/Users/eduar/Desktop/ox_lib/documentation
+# documentation/NPC_SYSTEM.md
+# documentation/SYSTEMS_OVERVIEW.md
+# documentation/AUDIO_API.md
+# documentation/CAMERA_API.md
+# documentation/DAMAGE_API.md
+# documentation/STATEBAGS_API.md
+# documentation/WEAPONS_API.md
+# documentation/README.md
+# docs/*
+# documentation/NETWORK_API.md
+# documentation/PICKUPS_API.md
+# exclude/docs/
+
 FLOW_ANALYSIS.md
 _config.yml
 scripts/generate-docs-index.js
@@ -32,11 +32,13 @@ web/package.json
 web/vite.config.docs.mjs
 web/package.json
 css_para_no_olviarme_de_los_colores.md
-documentation/NETWORK_API.md
-documentation/PICKUPS_API.md
-test_streaming_audio.lua
-api/camera/examples.lua
 
 exclude/docs/
 exclude
+
+ARCHITECTURE.md
+imports/npc/examples.lua
+api/database/server.lua
+test_streaming_audio.lua
+api/camera/examples.lua
 
