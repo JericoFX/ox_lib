@@ -14,9 +14,9 @@ return {
     inventory = {
         ['ox_inventory'] = 'ox_inventory',
         ['qb-inventory'] = 'qb-inventory',
-        ['qs-inventory'] = 'qs-inventory',
-        ['core_inventory'] = 'core_inventory',
-        ['lj-inventory'] = 'lj-inventory'
+        --  ['qs-inventory'] = 'qs-inventory',
+        --  ['core_inventory'] = 'core_inventory',
+        --   ['lj-inventory'] = 'lj-inventory'
     },
 
     -- Dispatch Systems
@@ -44,5 +44,23 @@ return {
         ['Renewed-Banking'] = 'Renewed-Banking',
         ['pickle_banking'] = 'pickle_banking',
         ['esx_atm'] = 'esx_atm'
+    },
+
+    -- Targeting Systems
+    targeting = {
+        ['bt-target'] = 'bt-target',
+        ['qb-target'] = 'qb-target',
+        ['qtarget']   = 'qb-target',
+        ['ox_target'] = 'ox_target'
+    },
+
+    -- Fuel Systems
+    fuel = {
+        ['cdn-fuel']   = 'cdn-fuel',
+        ['ox_fuel']    = 'ox_fuel',
+        ['ps-fuel']    = 'ps-fuel',
+        ['LegacyFuel'] = 'LegacyFuel',
+        ['lc_fuel']    = 'lc_fuel',
+        ['lj-fuel']    = 'lj-fuel'
     }
 }

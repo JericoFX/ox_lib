@@ -13,12 +13,12 @@ local QBCore = exports['qb-core']:GetCoreObject()
 local normalize = require 'wrappers.core.normalizer'
 
 local qbMap = {
-    id   = 'citizenid',
-    name = function(pd)
+    id       = 'citizenid',
+    name     = function(pd)
         return pd.charinfo and (pd.charinfo.firstname .. ' ' .. pd.charinfo.lastname) or 'Unknown'
     end,
 
-    job = function(pd)
+    job      = function(pd)
         return {
             name   = pd.job and pd.job.name or 'unemployed',
             label  = pd.job and pd.job.label or 'Unemployed',
@@ -28,7 +28,7 @@ local qbMap = {
         }
     end,
 
-    gang = function(pd)
+    gang     = function(pd)
         return {
             name  = pd.gang and pd.gang.name or 'none',
             label = pd.gang and pd.gang.label or 'None',
@@ -36,7 +36,7 @@ local qbMap = {
         }
     end,
 
-    money = function(pd)
+    money    = function(pd)
         return pd.money or { cash = 0, bank = 0, crypto = 0 }
     end,
 
@@ -278,7 +278,7 @@ function Core:progressBar(name, label, duration, useWhileDead, canCancel, disabl
         useWhileDead = useWhileDead or false,
         allowRagdoll = true,
         allowCuffed = false,
-        allowFalling = false, 
+        allowFalling = false,
         allowSwimming = false,
         canCancel = canCancel or false,
         anim = animation,
@@ -291,19 +291,19 @@ function Core:progressBar(name, label, duration, useWhileDead, canCancel, disabl
             mouse = false
         }
     }
-    
+
     if propTwo then
         if type(progressData.prop) == 'table' and progressData.prop.model then
-            progressData.prop = {progressData.prop, propTwo}
+            progressData.prop = { progressData.prop, propTwo }
         else
             progressData.prop = propTwo
         end
     end
-    
+
     local success = lib.progressBar(progressData)
-    
-    if success and onFinish then 
-        onFinish() 
+
+    if success and onFinish then
+        onFinish()
     elseif not success and onCancel then
         onCancel()
     end

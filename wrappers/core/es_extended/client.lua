@@ -2,7 +2,7 @@
     ESX Core Wrapper - Client Side
     Handles ESX framework integration, data normalization, and universal cache management
 ]]
-if  GetResourceState('es_extended') ~= 'started' then
+if GetResourceState('es_extended') ~= 'started' then
     return
 end
 
@@ -12,10 +12,10 @@ local ESX = exports['es_extended']:getSharedObject()
 local normalize = require 'wrappers.core.normalizer'
 
 local esxMap = {
-    id   = 'identifier',
-    name = 'name',
+    id       = 'identifier',
+    name     = 'name',
 
-    job = function(pd)
+    job      = function(pd)
         return {
             name   = pd.job and pd.job.name or 'unemployed',
             label  = pd.job and pd.job.label or 'Unemployed',
@@ -25,7 +25,7 @@ local esxMap = {
         }
     end,
 
-    gang = function(pd)
+    gang     = function(pd)
         return pd.gang and {
             name  = pd.gang.name,
             label = pd.gang.label,
@@ -33,13 +33,17 @@ local esxMap = {
         } or { name = 'none', label = 'None', grade = 0 }
     end,
 
-    money = function(pd)
+    money    = function(pd)
         local m = { cash = 0, bank = 0, black_money = 0 }
         if pd.accounts then
             for _, acc in ipairs(pd.accounts) do
-                if acc.name == 'money' then m.cash = acc.money
-                elseif acc.name == 'bank' then m.bank = acc.money
-                elseif acc.name == 'black_money' then m.black_money = acc.money end
+                if acc.name == 'money' then
+                    m.cash = acc.money
+                elseif acc.name == 'bank' then
+                    m.bank = acc.money
+                elseif acc.name == 'black_money' then
+                    m.black_money = acc.money
+                end
             end
         end
         return m

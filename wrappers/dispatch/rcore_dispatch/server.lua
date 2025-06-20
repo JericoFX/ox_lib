@@ -1,39 +1,40 @@
 --[[
-    CD Dispatch Functions - Server Side
-    ]]
+    rcore_dispatch Integration - Server Side
+]]
 
-if GetResourceState('cd_dispatch') ~= 'started' then
-    return
+if GetResourceState('rcore_dispatch') ~= 'started' then
+    return -- resource not present
 end
 
-local Normalizer = require 'wrappers.core.normalizer'
+-- Helper build -------------------------------------------------------------
 
--- Convert to localised functions ------------------------------------------
+---Helper to build call data compatible with rcore_dispatch
+---@param data table
+---@return table
+local function buildCallData(data)
+    return {
+        code             = data.code or '10-90',
+        default_priority = data.priority or 'medium',
+        coords           = data.coords or vector3(0, 0, 0),
+        job              = (data.job or (data.jobs and data.jobs[1])) or 'police',
+        text             = data.message or data.title or 'Alert',
+        type             = data.alertType or data.type or 'alerts',
+        blip_time        = data.length or 5,
+        image            = data.image,
+        custom_sound     = data.sound,
+        blip             = data.blip,
+    }
+end
+
+-- Localised functions -------------------------------------------------------
 
 local function sendAlert(data)
-    local alertData = {
-        job_table = data.jobs or { 'police' },
-        coords = data.coords,
-        title = data.title or 'Alert',
-        message = data.message or 'No message',
-        flash = data.flash or 0,
-        unique_id = data.id or tostring(math.random(0000000, 9999999)),
-        blip = data.blip or {
-            sprite = 431,
-            colour = 3,
-            scale = 1.2,
-            text = data.title or 'Alert',
-            time = (data.time or 5) * 60000,
-            sound = 1,
-        }
-    }
-
-    TriggerServerEvent('cd_dispatch:AddNotification', alertData)
+    TriggerEvent('rcore_dispatch:server:sendAlert', buildCallData(data or {}))
 end
 
 local function sendPoliceAlert(data)
     data       = data or {}
-    data.jobs  = { 'police' }
+    data.job   = 'police'
     data.code  = data.code or '10-90'
     data.title = data.title or 'Police Alert'
     sendAlert(data)
@@ -41,7 +42,7 @@ end
 
 local function sendEMSAlert(data)
     data       = data or {}
-    data.jobs  = { 'ambulance' }
+    data.job   = 'ambulance'
     data.code  = data.code or '10-54'
     data.title = data.title or 'EMS Alert'
     sendAlert(data)
@@ -49,7 +50,7 @@ end
 
 local function sendFireAlert(data)
     data       = data or {}
-    data.jobs  = { 'fire' }
+    data.job   = 'fire'
     data.code  = data.code or '10-70'
     data.title = data.title or 'Fire Alert'
     sendAlert(data)
@@ -57,9 +58,9 @@ end
 
 local function sendMechanicAlert(data)
     data       = data or {}
-    data.jobs  = { 'mechanic' }
-    data.code  = data.code or '10-35'
-    data.title = data.title or 'Mechanic Alert'
+    data.job   = 'mechanic'
+    data.code  = data.code or '10-50'
+    data.title = data.title or 'Mechanic Request'
     sendAlert(data)
 end
 
@@ -76,7 +77,8 @@ local dispatch                        = {
     sendCustomAlert   = sendCustomAlert,
 }
 
--- Register implementation in Normalizer -------------------------------------------------------
+local Normalizer                      = require 'wrappers.core.normalizer'
+
 Normalizer.dispatch.sendAlert         = sendAlert
 Normalizer.dispatch.sendPoliceAlert   = sendPoliceAlert
 Normalizer.dispatch.sendEMSAlert      = sendEMSAlert
@@ -85,5 +87,4 @@ Normalizer.dispatch.sendMechanicAlert = sendMechanicAlert
 Normalizer.dispatch.sendCustomAlert   = sendCustomAlert
 Normalizer.capabilities.dispatch      = true
 
--- Return a dummy instance for legacy table-style access ----------------------------------------
 return dispatch

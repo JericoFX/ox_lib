@@ -1,241 +1,258 @@
 --[[
-    QBCore Framework Server Functions
+    QBCore Server Wrapper (clean rewrite)
+    Provides a consistent, class-based API mirroring the client wrapper.
 ]]
 
 if GetResourceState('qb-core') ~= 'started' then
     return
 end
 
-local QBCore = exports['qb-core']:GetCoreObject()
+local QBCore    = exports['qb-core']:GetCoreObject()
+local normalize = require 'wrappers.core.normalizer'
 
-
-local playerCache = {}
-local frameCache = {}
-local normalizedCache = {}
-local lastFrame = 0
-local CACHE_TTL = 150
-
-local function cleanupDisconnectedPlayers()
-    local activePlayers = {}
-    for _, playerId in ipairs(GetPlayers()) do
-        activePlayers[tonumber(playerId)] = true
-    end
-    
-    for source in pairs(playerCache) do
-        if not activePlayers[source] then
-            playerCache[source] = nil
-        end
-    end
-end
-
-local function getCachedQBPlayer(source)
-    local currentFrame = GetGameTimer()
-    
-    if currentFrame ~= lastFrame then
-        frameCache = {}
-        lastFrame = currentFrame
-        
-        if math.random(1, 100) == 1 then
-            cleanupDisconnectedPlayers()
-        end
-    end
-    
-    if frameCache[source] then
-        return frameCache[source]
-    end
-    
-    local cached = playerCache[source]
-    if cached and (currentFrame - cached.timestamp) < CACHE_TTL then
-        frameCache[source] = cached.player
-        return cached.player
-    end
-    
-    local qbPlayer = QBCore.Functions.GetPlayer(source)
-    
-    playerCache[source] = {
-        player = qbPlayer,
-        timestamp = currentFrame
-    }
-    frameCache[source] = qbPlayer
-    
-    return qbPlayer
-end
-
-local function normalizePlayer(qbPlayer)
-    if not qbPlayer then return nil end
-
-    return {
-        -- Identificadores normalizados
-        source = qbPlayer.PlayerData.source,
-        citizenid = qbPlayer.PlayerData.citizenid,
-        identifier = qbPlayer.PlayerData.citizenid,
-        name = qbPlayer.PlayerData.charinfo.firstname .. ' ' .. qbPlayer.PlayerData.charinfo.lastname,
-
-        -- Job normalizado
-        job = {
-            name = qbPlayer.PlayerData.job.name,
-            label = qbPlayer.PlayerData.job.label,
-            grade = qbPlayer.PlayerData.job.grade.level,
-            salary = qbPlayer.PlayerData.job.payment,
-            onduty = qbPlayer.PlayerData.job.onduty
-        },
-
-        -- Gang normalizado (específico de QB)
-        gang = {
-            name = qbPlayer.PlayerData.gang.name,
-            label = qbPlayer.PlayerData.gang.label,
-            grade = qbPlayer.PlayerData.gang.grade.level
-        },
-
-        -- Money normalizado
-        money = {
-            cash = qbPlayer.PlayerData.money.cash or 0,
-            bank = qbPlayer.PlayerData.money.bank or 0,
-            crypto = qbPlayer.PlayerData.money.crypto or 0
-        },
-
-        -- Funciones normalizadas
-        Functions = {
-            AddMoney = function(moneytype, amount)
-                qbPlayer.Functions.AddMoney(moneytype, amount)
-            end,
-            RemoveMoney = function(moneytype, amount)
-                qbPlayer.Functions.RemoveMoney(moneytype, amount)
-            end,
-            SetJob = function(job, grade)
-                qbPlayer.Functions.SetJob(job, grade or 0)
-            end,
-            GetMoney = function(moneytype)
-                return qbPlayer.PlayerData.money[moneytype] or 0
-            end
-        },
-
-        -- Acceso directo al objeto original
-        _original = qbPlayer
-    }
-end
-
-local function getNormalizedPlayer(source)
-    if normalizedCache[source] then return normalizedCache[source] end
-    local qbPlayer = getCachedQBPlayer(source)
-    local normalized = normalizePlayer(qbPlayer)
-    normalizedCache[source] = normalized
-    return normalized
-end
-
-local function invalidatePlayerCache(source)
-    if playerCache[source] then
-        playerCache[source] = nil
-    end
-    if frameCache[source] then
-        frameCache[source] = nil
-    end
-    normalizedCache[source] = nil
-end
-
-AddEventHandler('playerDropped', function()
-    local source = source
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:moneyChange', function()
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:jobUpdate', function()
-    invalidatePlayerCache(source)
-end)
-
-RegisterNetEvent('qb-core:server:gangUpdate', function()
-    invalidatePlayerCache(source)
-end)
-
-local coreWrapper = {
-    player = function(source)
-        return getNormalizedPlayer(source)
+-- Framework-specific mapping for the shared normalizer ------------------------
+local map       = {
+    id       = 'citizenid',
+    name     = function(pd)
+        return pd.charinfo and (pd.charinfo.firstname .. ' ' .. pd.charinfo.lastname) or 'Unknown'
     end,
-
-    playerByIdentifier = function(identifier)
-        local qbPlayer = QBCore.Functions.GetPlayerByCitizenId(identifier)
-        return normalizePlayer(qbPlayer)
+    job      = function(pd)
+        return {
+            name   = pd.job and pd.job.name or 'unemployed',
+            label  = pd.job and pd.job.label or 'Unemployed',
+            grade  = pd.job and pd.job.grade and pd.job.grade.level or 0,
+            salary = pd.job and pd.job.payment or 0,
+            onduty = pd.job and pd.job.onduty or false
+        }
     end,
-
-    players = function()
-        local list = {}
-        local qbPlayers = QBCore.Functions.GetQBPlayers()
-        for _, qbPlayer in pairs(qbPlayers) do
-            local src = qbPlayer.PlayerData.source
-            list[#list + 1] = getNormalizedPlayer(src)
-        end
-        return list
+    gang     = function(pd)
+        return {
+            name  = pd.gang and pd.gang.name or 'none',
+            label = pd.gang and pd.gang.label or 'None',
+            grade = pd.gang and pd.gang.grade and pd.gang.grade.level or 0
+        }
     end,
-
-    walletAdd = function(source, amount, account)
-        local player = getCachedQBPlayer(source)
-        if not player then return false end
-
-        account = account or 'cash'
-        player.Functions.AddMoney(account, amount)
-        invalidatePlayerCache(source)
-        return true
-    end,
-
-    walletRemove = function(source, amount, account)
-        local player = getCachedQBPlayer(source)
-        if not player then return false end
-
-        account = account or 'cash'
-        player.Functions.RemoveMoney(account, amount)
-        invalidatePlayerCache(source)
-        return true
-    end,
-
-    wallet = function(source, account)
-        local player = getCachedQBPlayer(source)
-        if not player then return 0 end
-
-        account = account or 'cash'
-        return player.PlayerData.money[account] or 0
-    end,
-
-    role = function(source)
-        local player = getCachedQBPlayer(source)
-        if not player then return nil end
-
-        return player.PlayerData.job.name
-    end,
-
-    roleGrade = function(source)
-        local player = getCachedQBPlayer(source)
-        if not player then return nil end
-
-        return player.PlayerData.job.grade.level
-    end,
-
-    roleSet = function(source, job, grade)
-        local player = getCachedQBPlayer(source)
-        if not player then return false end
-
-        player.Functions.SetJob(job, grade or 0)
-        invalidatePlayerCache(source)
-        return true
-    end,
-
-    guild = function(source)
-        local player = getCachedQBPlayer(source)
-        if not player then return nil end
-
-        return player.PlayerData.gang.name
-    end,
-
-    guildSet = function(source, gang, grade)
-        local player = getCachedQBPlayer(source)
-        if not player then return false end
-
-        player.Functions.SetGang(gang, grade or 0)
-        invalidatePlayerCache(source)
-        return true
-    end
+    money    = function(pd) return pd.money or { cash = 0, bank = 0, crypto = 0 } end,
+    charinfo = function(pd) return pd.charinfo or {} end,
+    metadata = 'metadata'
 }
 
-return coreWrapper
+-- Caches ----------------------------------------------------------------------
+local qbCache   = {} ---@type table<number,{player:any,time:number}>
+local normCache = {} ---@type table<number,table|nil>
+local CACHE_TTL = 1000 -- milliseconds
+
+local function now() return GetGameTimer() end
+
+local function invalidate(src)
+    qbCache[src]   = nil
+    normCache[src] = nil
+end
+
+-- Invalidate on relevant framework events
+AddEventHandler('playerDropped', function() invalidate(source) end)
+RegisterNetEvent('qb-core:server:moneyChange', function() invalidate(source) end)
+RegisterNetEvent('qb-core:server:jobUpdate', function() invalidate(source) end)
+RegisterNetEvent('qb-core:server:gangUpdate', function() invalidate(source) end)
+
+-- Low-level helpers -----------------------------------------------------------
+local function getQB(src)
+    local entry = qbCache[src]
+    local t = now()
+    if entry and (t - entry.time) < CACHE_TTL then
+        return entry.player
+    end
+
+    local player = QBCore.Functions.GetPlayer(src)
+    if player then qbCache[src] = { player = player, time = t } end
+    return player
+end
+
+local function getNormalised(src)
+    local cached = normCache[src]
+    if cached ~= nil then return cached end -- may be nil (player hasn't loaded)
+
+    local pData = getQB(src)
+    local normalised = normalize(pData and pData.PlayerData, map)
+    normCache[src] = normalised
+    return normalised
+end
+
+-- Class -----------------------------------------------------------------------
+local Core = {}
+
+---@param src number
+function Core:constructor(src)
+    self.source = src
+end
+
+function Core:player()
+    return getNormalised(self.source)
+end
+
+-- Money ----------------------------------------------------------------------
+function Core:wallet(account)
+    account = account or 'cash'
+    local qb = getQB(self.source)
+    return qb and qb.PlayerData.money[account] or 0
+end
+
+function Core:walletAdd(amount, account)
+    local qb = getQB(self.source)
+    if not qb then return false end
+    qb.Functions.AddMoney(account or 'cash', amount)
+    invalidate(self.source)
+    return true
+end
+
+function Core:walletRemove(amount, account)
+    local qb = getQB(self.source)
+    if not qb then return false end
+    qb.Functions.RemoveMoney(account or 'cash', amount)
+    invalidate(self.source)
+    return true
+end
+
+-- Job / Role ------------------------------------------------------------------
+function Core:role()
+    local qb = getQB(self.source); return qb and qb.PlayerData.job.name
+end
+
+function Core:roleLabel()
+    local qb = getQB(self.source); return qb and qb.PlayerData.job.label
+end
+
+function Core:roleGrade()
+    local qb = getQB(self.source); return qb and qb.PlayerData.job.grade.level
+end
+
+function Core:roleSet(job, grade)
+    local qb = getQB(self.source)
+    if not qb then return false end
+    qb.Functions.SetJob(job, grade or 0)
+    invalidate(self.source)
+    return true
+end
+
+-- Gang / Guild ----------------------------------------------------------------
+function Core:guild()
+    local qb = getQB(self.source); return qb and qb.PlayerData.gang.name
+end
+
+function Core:guildLabel()
+    local qb = getQB(self.source); return qb and qb.PlayerData.gang.label
+end
+
+function Core:guildGrade()
+    local qb = getQB(self.source); return qb and qb.PlayerData.gang.grade.level
+end
+
+function Core:guildSet(gang, grade)
+    local qb = getQB(self.source)
+    if not qb then return false end
+    qb.Functions.SetGang(gang, grade or 0)
+    invalidate(self.source)
+    return true
+end
+
+-- Static helpers --------------------------------------------------------------
+function Core.of(src) return Core(src) end
+
+function Core.players()
+    local list = {}
+    for _, id in ipairs(GetPlayers()) do
+        list[#list + 1] = Core(tonumber(id))
+    end
+    return list
+end
+
+-- NEW IMPLEMENTATION: simple table export
+local core = {}
+core.framework = 'qb-core'
+
+-- Returns a normalised player table for the given source
+function core.getPlayer(src)
+    return getNormalised(src)
+end
+
+-- Money helpers
+function core.wallet(src, account)
+    account = account or 'cash'
+    local qb = getQB(src)
+    return qb and qb.PlayerData.money[account] or 0
+end
+
+function core.walletAdd(src, amount, account)
+    local qb = getQB(src)
+    if not qb then return false end
+    qb.Functions.AddMoney(account or 'cash', amount)
+    invalidate(src)
+    return true
+end
+
+function core.walletRemove(src, amount, account)
+    local qb = getQB(src)
+    if not qb then return false end
+    qb.Functions.RemoveMoney(account or 'cash', amount)
+    invalidate(src)
+    return true
+end
+
+-- Job / Role helpers
+function core.role(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.job.name or 'unemployed'
+end
+
+function core.roleLabel(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.job.label or 'Unemployed'
+end
+
+function core.roleGrade(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.job.grade and qb.PlayerData.job.grade.level or 0
+end
+
+function core.roleSet(src, job, grade)
+    local qb = getQB(src)
+    if not qb then return false end
+    qb.Functions.SetJob(job, grade or 0)
+    invalidate(src)
+    return true
+end
+
+-- Gang helpers
+function core.guild(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.gang.name or 'none'
+end
+
+function core.guildLabel(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.gang.label or 'None'
+end
+
+function core.guildGrade(src)
+    local qb = getQB(src)
+    return qb and qb.PlayerData.gang.grade and qb.PlayerData.gang.grade.level or 0
+end
+
+function core.guildSet(src, gang, grade)
+    local qb = getQB(src)
+    if not qb then return false end
+    qb.Functions.SetGang(gang, grade or 0)
+    invalidate(src)
+    return true
+end
+
+-- Utility
+function core.players()
+    local list = {}
+    for _, id in ipairs(GetPlayers()) do
+        list[#list + 1] = getNormalised(tonumber(id))
+    end
+    return list
+end
+
+return core

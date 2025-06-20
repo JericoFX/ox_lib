@@ -31,6 +31,7 @@ files {
     -- Wrapper Files
     'wrappers/**/**/shared.lua',
     'wrappers/**/**/client.lua',
+    'wrappers/**/normalizer.lua',
     -- Web Files
     'web/build/index.html',
     'web/build/**/*',
@@ -52,6 +53,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'imports/callback/server.lua',
     'imports/getFilesInDirectory/server.lua',
+    'wrappers/**/**/server.lua',
     'resource/**/server.lua',
     'resource/**/server/*.lua',
 }

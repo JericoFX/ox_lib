@@ -1,203 +1,243 @@
 --[[
-    ESX Framework Server Functions
+    ESX Server Wrapper – clean rewrite
 ]]
 
 if GetResourceState('es_extended') ~= 'started' then
     return
 end
 
-local ESX = exports['es_extended']:getSharedObject()
+local ESX       = exports['es_extended']:getSharedObject()
+local normalize = require 'wrappers.core.normalizer'
 
--- Caching tables
-local playerCache = {}
-local normalizedCache = {}
-local frameCache = {}
-local lastFrame = 0
+-- Mapping for shared normalizer ---------------------------------------------
+local map       = {
+    id       = 'identifier',
+    name     = 'name',
 
-local function normalizePlayer(esxPlayer)
-    if not esxPlayer then return nil end
+    job      = function(pd)
+        return {
+            name   = pd.job and pd.job.name or 'unemployed',
+            label  = pd.job and pd.job.label or 'Unemployed',
+            grade  = pd.job and pd.job.grade or 0,
+            salary = pd.job and pd.job.grade_salary or 0,
+            onduty = true
+        }
+    end,
 
-    return {
-        -- Identificadores normalizados
-        source = esxPlayer.source,
-        citizenid = esxPlayer.identifier,
-        identifier = esxPlayer.identifier,
-        name = esxPlayer.getName(),
-
-        -- Job normalizado
-        job = {
-            name = esxPlayer.job.name,
-            label = esxPlayer.job.label,
-            grade = esxPlayer.job.grade,
-            salary = esxPlayer.job.grade_salary,
-            onduty = true -- ESX no maneja duty por defecto
-        },
-
-        -- Money normalizado
-        money = {
-            cash = esxPlayer.getMoney(),
-            bank = esxPlayer.getAccount('bank').money,
-            black_money = esxPlayer.getAccount('black_money').money
-        },
-
-        -- Funciones normalizadas
-        Functions = {
-            AddMoney = function(moneytype, amount)
-                if moneytype == 'cash' then moneytype = 'money' end
-                if moneytype == 'bank' then
-                    esxPlayer.addAccountMoney('bank', amount)
-                else
-                    esxPlayer.addMoney(amount)
+    money    = function(pd)
+        local m = { cash = 0, bank = 0, black_money = 0 }
+        if pd.accounts then
+            for _, acc in ipairs(pd.accounts) do
+                if acc.name == 'money' then
+                    m.cash = acc.money
+                elseif acc.name == 'bank' then
+                    m.bank = acc.money
+                elseif acc.name == 'black_money' then
+                    m.black_money = acc.money
                 end
-            end,
-            RemoveMoney = function(moneytype, amount)
-                if moneytype == 'cash' then moneytype = 'money' end
-                if moneytype == 'bank' then
-                    esxPlayer.removeAccountMoney('bank', amount)
-                else
-                    esxPlayer.removeMoney(amount)
-                end
-            end,
-            SetJob = function(job, grade)
-                esxPlayer.setJob(job, grade or 0)
-            end,
-            GetMoney = function(moneytype)
-                if moneytype == 'cash' then return esxPlayer.getMoney() end
-                if moneytype == 'bank' then return esxPlayer.getAccount('bank').money end
-                return esxPlayer.getMoney()
             end
-        },
-
-        -- Acceso directo al objeto original
-        _original = esxPlayer
-    }
-end
-
--- Returns ESX player object with per-frame micro-cache and long cache cleared on invalidation
-local function getCachedESXPlayer(source)
-    local currentFrame = GetFrameCount()
-    if currentFrame ~= lastFrame then
-        frameCache = {}
-        lastFrame = currentFrame
-    end
-
-    if frameCache[source] then
-        return frameCache[source]
-    end
-
-    if playerCache[source] then
-        frameCache[source] = playerCache[source]
-        return playerCache[source]
-    end
-
-    local esxPlayer = ESX.GetPlayerFromId(source)
-    playerCache[source] = esxPlayer
-    frameCache[source] = esxPlayer
-    return esxPlayer
-end
-
--- Returns normalized player with caching
-local function getNormalizedPlayer(source)
-    if normalizedCache[source] then
-        -- quick return if cached
-        return normalizedCache[source]
-    end
-
-    local esxPlayer = getCachedESXPlayer(source)
-    local normalized = normalizePlayer(esxPlayer)
-    normalizedCache[source] = normalized
-    return normalized
-end
-
--- Adjust invalidate function to also clear normalized cache
-local function invalidatePlayerCache(source)
-    playerCache[source] = nil
-    normalizedCache[source] = nil
-    frameCache[source] = nil
-end
-
--- Invalidate when player disconnects
-AddEventHandler('playerDropped', function()
-    local src = source
-    invalidatePlayerCache(src)
-end)
-
-local coreWrapper = {
-    -- Unified API
-    player = function(source)
-        return getNormalizedPlayer(source)
-    end,
-    playerByIdentifier = function(identifier)
-        -- Identifier lookups are infrequent; no cache needed
-        local esxPlayer = ESX.GetPlayerFromIdentifier(identifier)
-        return normalizePlayer(esxPlayer)
-    end,
-    players = function()
-        local list = {}
-        local esxPlayers = ESX.GetExtendedPlayers()
-        for i = 1, #esxPlayers do
-            local src = esxPlayers[i].source
-            list[#list + 1] = getNormalizedPlayer(src)
         end
-        return list
+        return m
     end,
-    walletAdd = function(source, amount, account)
-        local player = getCachedESXPlayer(source)
-        if not player then return false end
-        account = account or 'cash'
-        if account == 'cash' then
-            player.addMoney(amount)
-        elseif account == 'bank' then
-            player.addAccountMoney('bank', amount)
-        else
-            player.addAccountMoney(account, amount)
-        end
-        invalidatePlayerCache(source)
-        return true
-    end,
-    walletRemove = function(source, amount, account)
-        local player = getCachedESXPlayer(source)
-        if not player then return false end
-        account = account or 'cash'
-        if account == 'cash' then
-            player.removeMoney(amount)
-        elseif account == 'bank' then
-            player.removeAccountMoney('bank', amount)
-        else
-            player.removeAccountMoney(account, amount)
-        end
-        invalidatePlayerCache(source)
-        return true
-    end,
-    wallet = function(source, account)
-        local player = getCachedESXPlayer(source)
-        if not player then return 0 end
-        account = account or 'cash'
-        if account == 'cash' then
-            return player.getMoney()
-        elseif account == 'bank' then
-            return player.getAccount('bank').money
-        else
-            return player.getAccount(account).money
-        end
-    end,
-    role = function(source)
-        local player = getCachedESXPlayer(source)
-        if not player then return nil end
-        return player.job.name
-    end,
-    roleGrade = function(source)
-        local player = getCachedESXPlayer(source)
-        if not player then return nil end
-        return player.job.grade
-    end,
-    roleSet = function(source, job, grade)
-        local player = getCachedESXPlayer(source)
-        if not player then return false end
-        player.setJob(job, grade or 0)
-        invalidatePlayerCache(source)
-        return true
-    end
+
+    metadata = 'metadata'
 }
 
-return coreWrapper
+-- Internal caches ------------------------------------------------------------
+local esxCache  = {} ---@type table<number,{player:any,time:number}>
+local normCache = {} ---@type table<number,table|nil>
+local CACHE_TTL = 1000 -- ms
+
+local function now() return GetGameTimer() end
+
+local function invalidate(src)
+    esxCache[src]  = nil
+    normCache[src] = nil
+end
+
+AddEventHandler('playerDropped', function() invalidate(source) end)
+RegisterNetEvent('esx:setAccountMoney', function() invalidate(source) end)
+RegisterNetEvent('esx:setJob', function() invalidate(source) end)
+
+-- Helpers --------------------------------------------------------------------
+local Core = {}
+
+local function getESX(src)
+    local entry = esxCache[src]
+    local t = now()
+    if entry and (t - entry.time) < CACHE_TTL then return entry.player end
+
+    local player = ESX.GetPlayerFromId(src)
+    if player then esxCache[src] = { player = player, time = t } end
+    return player
+end
+
+local function getNormalised(src)
+    if normCache[src] ~= nil then return normCache[src] end
+
+    local esx = getESX(src)
+    local data = esx and {
+        identifier = esx.identifier,
+        name       = esx.getName(),
+        job        = esx.job,
+        accounts   = esx.accounts,
+        metadata   = esx.getMeta and esx:getMeta() or {},
+    }
+    local norm = normalize(data, map)
+    normCache[src] = norm
+    return norm
+end
+
+-- Class ----------------------------------------------------------------------
+
+-- Money ----------------------------------------------------------------------
+function Core:wallet(account)
+    account = account or 'cash'
+    local esx = getESX(self.source)
+    if not esx then return 0 end
+    if account == 'cash' then return esx.getMoney() end
+    local acc = esx.getAccount(account)
+    return acc and acc.money or 0
+end
+
+function Core:walletAdd(amount, account)
+    local esx = getESX(self.source)
+    if not esx then return false end
+    account = account or 'cash'
+    if account == 'cash' then
+        esx.addMoney(amount)
+    else
+        esx.addAccountMoney(account, amount)
+    end
+    invalidate(self.source)
+    return true
+end
+
+function Core:walletRemove(amount, account)
+    local esx = getESX(self.source)
+    if not esx then return false end
+    account = account or 'cash'
+    if account == 'cash' then
+        esx.removeMoney(amount)
+    else
+        esx.removeAccountMoney(account, amount)
+    end
+    invalidate(self.source)
+    return true
+end
+
+-- Job / Role -----------------------------------------------------------------
+function Core:role()
+    local esx = getESX(self.source); return esx and esx.job.name
+end
+
+function Core:roleLabel()
+    local esx = getESX(self.source); return esx and esx.job.label
+end
+
+function Core:roleGrade()
+    local esx = getESX(self.source); return esx and esx.job.grade
+end
+
+function Core:roleSet(job, grade)
+    local esx = getESX(self.source)
+    if not esx then return false end
+    esx.setJob(job, grade or 0)
+    invalidate(self.source)
+    return true
+end
+
+-- Static helpers -------------------------------------------------------------
+function Core.of(src) return Core(src) end
+
+function Core.players()
+    local list = {}
+    local players = ESX.GetExtendedPlayers()
+    for i = 1, #players do
+        list[#list + 1] = Core(players[i].source)
+    end
+    return list
+end
+
+-- NEW IMPLEMENTATION: Replace class-based export with simple table functions
+local core = {}
+core.framework = 'esx'
+
+-- Public API -----------------------------------------------------------------
+
+-- Returns a normalised player table for the given source.
+function core.getPlayer(src)
+    return getNormalised(src)
+end
+
+-- Money helpers --------------------------------------------------------------
+function core.wallet(src, account)
+    account = account or 'cash'
+    local esx = getESX(src)
+    if not esx then return 0 end
+    if account == 'cash' then return esx.getMoney() end
+    local acc = esx.getAccount(account)
+    return acc and acc.money or 0
+end
+
+function core.walletAdd(src, amount, account)
+    local esx = getESX(src)
+    if not esx then return false end
+    account = account or 'cash'
+    if account == 'cash' then
+        esx.addMoney(amount)
+    else
+        esx.addAccountMoney(account, amount)
+    end
+    invalidate(src)
+    return true
+end
+
+function core.walletRemove(src, amount, account)
+    local esx = getESX(src)
+    if not esx then return false end
+    account = account or 'cash'
+    if account == 'cash' then
+        esx.removeMoney(amount)
+    else
+        esx.removeAccountMoney(account, amount)
+    end
+    invalidate(src)
+    return true
+end
+
+-- Job / Role helpers ---------------------------------------------------------
+function core.role(src)
+    local esx = getESX(src)
+    return esx and esx.job and esx.job.name or 'unemployed'
+end
+
+function core.roleLabel(src)
+    local esx = getESX(src)
+    return esx and esx.job and esx.job.label or 'Unemployed'
+end
+
+function core.roleGrade(src)
+    local esx = getESX(src)
+    return esx and esx.job and esx.job.grade or 0
+end
+
+function core.roleSet(src, job, grade)
+    local esx = getESX(src)
+    if not esx then return false end
+    esx.setJob(job, grade or 0)
+    invalidate(src)
+    return true
+end
+
+-- Utility --------------------------------------------------------------------
+function core.players()
+    local list = {}
+    local players = ESX.GetExtendedPlayers and ESX.GetExtendedPlayers() or {}
+    for i = 1, #players do
+        list[#list + 1] = getNormalised(players[i].source)
+    end
+    return list
+end
+
+return core

@@ -6,6 +6,7 @@ local Inventory = lib.class('Inventory')
 
 function Inventory:constructor()
     self.system = 'qb-inventory'
+    self.exports = exports['qb-inventory']
 end
 
 function Inventory:openInventory(type, data)

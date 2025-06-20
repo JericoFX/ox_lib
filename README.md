@@ -36,8 +36,9 @@ This is an **experimental extension** of the original ox_lib that adds:
 
 - `lib.core` - Universal framework wrapper (ESX/QBCore/ox_core)
 - `lib.inventory` - Universal inventory wrapper (ox_inventory/qb-inventory/qs-inventory)
-- `lib.dispatch` - Universal dispatch wrapper (cd_dispatch/ps-dispatch)
-- `lib.phone` - Universal phone wrapper (qb-phone/qs-smartphone/etc)
+- `lib.dispatch` - Universal dispatch wrapper (cd_dispatch/ps-dispatch/qs-dispatch/origen_police/rcore_dispatch)
+- `lib.fuel` - Universal fuel wrapper (cdn-fuel/ox_fuel/ps-fuel/LegacyFuel/lc_fuel/lj-fuel)
+- `lib.phone` - Universal phone wrapper (qb-phone/qs-smartphone/lb-phone/renewed-phone/high_phone)
 - `lib.banking` - Universal banking wrapper (okokBanking/qb-banking/etc)
 - `lib.tickets` - **NEW!** Advanced ticket system with player reporting and staff management
 
@@ -46,6 +47,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 Neutral method names available on both client (class, colon `:`) and server (table, dot `.`) wrappers:
 
 **Client (use colon)**
+
 - `lib.core:player()`
 - `lib.core:role()` / `:roleGrade()` / `:roleLabel()`
 - `lib.core:funds(account?)`
@@ -56,6 +58,7 @@ Neutral method names available on both client (class, colon `:`) and server (tab
 - `lib.core:notify(message, type?, duration?)`
 
 **Server (use dot)**
+
 - `lib.core.player(source)`
 - `lib.core.players()`
 - `lib.core.walletAdd(source, amount, account?)`
@@ -77,6 +80,55 @@ These aliases complement the existing method names (`getJob`, `addMoney`, etc.) 
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
 - **Shared Player Data Normalizer** centralises framework-specific mappings into `wrappers/core/normalizer.lua`, reducing duplication across wrappers.
+
+**New Normalizer Inventory helpers**
+
+The core now exposes a minimal, typed inventory interface at `normalizer.inventory`:
+
+- `getItem(source, item, metadata?, strict?)`
+- `addItem(source, item, count, metadata?)`
+- `removeItem(source, item, count, metadata?, slot?)`
+
+Each wrapper registers its own implementation. The core applies a single-read cache so returned values are invalidated immediately after usage, avoiding stale data without long-lived memory overhead.
+
+**New Normalizer Dispatch helpers**
+
+`normalizer.dispatch` provides a unified API for server-side alert integration across popular dispatch systems:
+
+- `sendAlert(data)` – generic alert
+- `sendPoliceAlert(data)`
+- `sendEMSAlert(data)`
+- `sendFireAlert(data)`
+- `sendMechanicAlert(data)`
+- `sendCustomAlert(data)`
+
+**New Normalizer Fuel helpers**
+
+`normalizer.fuel` abstracts the most common fuel operations:
+
+- `getFuel(vehicle)` – returns current fuel level
+- `setFuel(vehicle, fuel)` – sets fuel level
+- `addFuel(vehicle, amount)` – increments fuel
+
+**New Normalizer Voice helpers**
+
+`normalizer.voice` offers a standardised voice API:
+
+- `setPlayerRadio(frequency)`
+- `setPlayerPhone(callId)`
+- `setProximityRange(range)`
+- `mutePlayer(player, muted)`
+
+**New Normalizer Targeting helpers**
+
+`normalizer.targeting` exposes a minimal client-side wrapper for the most common targeting operations shared by **qb-target**, **bt-target** and **ox_target**:
+
+- `addEntity(entity, options)` – register interaction options for a specific entity
+- `removeEntity(entity)` – remove all options previously added to an entity
+- `addZone(name, coords, options)` – create a box zone with interaction options
+- `removeZone(name)` – delete a previously created zone by name
+
+Every targeting system wrapper maps its native exports to this interface, so the same call works no matter which resource is running. Use it exactly as you would call the original exports, but without worrying about the underlying implementation.
 
 ---
 

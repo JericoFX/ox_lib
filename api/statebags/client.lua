@@ -48,6 +48,14 @@ function StateBags:setGlobalState(key, value, options)
     if key:match('^_meta_') then
         error('Cannot set metadata keys directly', 2)
     end
+    if #key > 255 then
+        error('State key length exceeds 255 bytes', 2)
+    end
+
+    local valueType = type(value)
+    if valueType == 'function' or valueType == 'userdata' or valueType == 'thread' then
+        error(('Unsupported value type provided to setGlobalState: %s'):format(valueType), 2)
+    end
 
     options = options or {}
 
@@ -90,6 +98,14 @@ function StateBags:setPlayerState(playerId, key, value, options)
     end
     if key:match('^_meta_') then
         error('Cannot set metadata keys directly', 2)
+    end
+    if #key > 255 then
+        error('State key length exceeds 255 bytes', 2)
+    end
+
+    local valueType = type(value)
+    if valueType == 'function' or valueType == 'userdata' or valueType == 'thread' then
+        error(('Unsupported value type provided to setPlayerState: %s'):format(valueType), 2)
     end
 
     options = options or {}
@@ -140,6 +156,14 @@ function StateBags:setEntityState(entity, key, value, options)
     end
     if key:match('^_meta_') then
         error('Cannot set metadata keys directly', 2)
+    end
+    if #key > 255 then
+        error('State key length exceeds 255 bytes', 2)
+    end
+
+    local valueType = type(value)
+    if valueType == 'function' or valueType == 'userdata' or valueType == 'thread' then
+        error(('Unsupported value type provided to setEntityState: %s'):format(valueType), 2)
     end
 
     options = options or {}
