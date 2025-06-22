@@ -1300,6 +1300,286 @@ lib.playSceneSequence({
     },
 
     -- Phase 3: Exit
+
+```
+
+---
+
+## **Task Sequences API**
+
+Advanced task sequence system for creating complex NPC behaviors using FiveM's OpenSequenceTask natives.
+
+### **Basic Usage**
+
+```lua
+-- Create a simple sequence
+local sequenceId = lib.createSequence({
+    ped = npc,
+    tasks = {
+        {
+            type = "goto_coord",
+            params = { coords = vector3(100.0, 200.0, 30.0), speed = 1.0 }
+        },
+        {
+            type = "play_anim",
+            params = { dict = "gestures@m@standing@casual", anim = "gesture_hello", duration = 3000 }
+        },
+        {
+            type = "scenario",
+            params = { name = "WORLD_HUMAN_GUARD_STAND", duration = 10000 }
+        }
+    }
+})
+
+-- Execute the sequence
+lib.executeSequence(sequenceId)
+```
+
+### **Quick Sequence**
+
+```lua
+-- Create and execute in one call
+lib.quickSequence(npc, {
+    { type = "goto_coord", params = { coords = targetPos } },
+    { type = "hands_up", params = { duration = 5000 } },
+    { type = "clear_tasks" }
+})
+```
+
+### **Patrol Sequences**
+
+```lua
+-- Create patrol with custom scenarios
+lib.createPatrolSequence(guardPed, {
+    vector3(100.0, 200.0, 30.0),
+    vector3(150.0, 200.0, 30.0),
+    vector3(150.0, 250.0, 30.0)
+}, {
+    speed = 1.0,
+    waitTime = 5000,
+    scenarios = { "WORLD_HUMAN_GUARD_STAND", "WORLD_HUMAN_BINOCULARS", "WORLD_HUMAN_CLIPBOARD" },
+    loop = true
+})
+```
+
+### **Conversation Sequences**
+
+```lua
+-- Two NPCs having a conversation
+local seq1, seq2 = lib.createConversationSequence(ped1, ped2, {
+    ped1_dict = "gestures@m@standing@casual",
+    ped1_anim = "gesture_hello",
+    ped2_dict = "gestures@f@standing@casual", 
+    ped2_anim = "gesture_point"
+}, 8000)
+```
+
+### **Advanced Sequence with Callbacks**
+
+```lua
+local sequenceId = lib.createSequence({
+    ped = npc,
+    name = "complex_behavior",
+    timeout = 30000,
+    loop = false,
+    callbacks = {
+        onStart = function(id, ped)
+            print("Sequence started for ped", ped)
+        end,
+        onComplete = function(id, ped)
+            print("Sequence completed")
+            -- Trigger next behavior
+        end,
+        onFail = function(id, ped, reason)
+            print("Sequence failed:", reason)
+        end
+    },
+    tasks = {
+        {
+            type = "goto_entity",
+            params = { target = PlayerPedId(), distance = 2.0 },
+            condition = function(ped) 
+                return #(GetEntityCoords(ped) - GetEntityCoords(PlayerPedId())) > 10.0 
+            end
+        },
+        {
+            type = "turn_to_face_entity",
+            params = { target = PlayerPedId(), duration = 2000 }
+        },
+        {
+            type = "play_anim",
+            params = { dict = "gestures@m@standing@casual", anim = "gesture_hello" }
+        },
+        {
+            type = "wait",
+            params = { duration = 2000 }
+        },
+        {
+            type = "custom",
+            params = {
+                func = function()
+                    -- Custom logic here
+                    TriggerEvent('custom:npcGreeting', npc)
+                end
+            }
+        }
+    }
+})
+```
+
+### **Available Task Types**
+
+- `goto_coord` - Walk to coordinates
+- `goto_entity` - Walk to entity
+- `play_anim` - Play animation
+- `scenario` - Start scenario in place
+- `scenario_at_position` - Start scenario at specific position
+- `enter_vehicle` - Enter vehicle
+- `drive_to_coord` - Drive to coordinates
+- `hands_up` - Put hands up
+- `look_at_entity` - Look at entity
+- `turn_to_face_entity` - Turn to face entity
+- `follow_ped` - Follow another ped
+- `wait` - Pause for duration
+- `clear_tasks` - Clear all tasks
+- `custom` - Execute custom function
+
+### **Sequence Management**
+
+```lua
+-- Check sequence state
+local state = lib.getSequenceState(sequenceId)
+
+-- Cancel sequence
+lib.cancelSequence(sequenceId)
+
+-- Get all active sequences
+local activeSequences = lib.getAllActiveSequences()
+
+-- Cancel all sequences for a ped
+lib.cancelPedSequences(npc)
+```
+
+### **Complete Heist Examples**
+
+#### **Casino Heist**
+
+```lua
+-- Load the casino heist module
+local CasinoHeist = require('api.sequences.examples.casino_heist')
+
+-- Start the complete casino heist
+CasinoHeist.start()
+
+-- Features:
+-- - 3-phase heist (Infiltration, Vault Access, Escape)
+-- - Multiple crew members with specific roles
+-- - Security guards with patrol sequences
+-- - Dynamic reactions to heist events
+-- - Coordinated escape with getaway car
+```
+
+#### **Market 24 Robbery**
+
+```lua
+-- Load the market robbery module
+local MarketRobbery = require('api.sequences.examples.market_robbery')
+
+-- Start simple market robbery
+MarketRobbery.startSimple()
+
+-- Start advanced robbery with customer
+MarketRobbery.startAdvanced()
+
+-- Features:
+-- - Simple but effective 3-phase robbery
+-- - Clerk with realistic reactions
+-- - Lookout providing security watch
+-- - Customer interaction in advanced mode
+-- - Police alert system
+```
+
+#### **Fleeca Truck Advanced Example**
+
+```lua
+-- Advanced Fleeca with Network Synchronized Scenes (Real-world replica)
+RegisterCommand('fleeca_real', function()
+    -- This example perfectly replicates the real Fleeca truck behavior you saw:
+    -- 1. Driver enters vehicle, guard positions precisely using animation offset
+    -- 2. Network synchronized scene with ped + vehicle + case animations
+    -- 3. Automatic door closing, guard entry, departure sequence
+end)
+
+RegisterCommand('fleeca_enhanced', function()
+    -- Enhanced version with additional case handling
+end)
+```
+
+**Advanced Features Used:**
+- `lib.createSyncScene()` - Network synchronized scenes
+- `lib.getAnimPosition()` - Precise animation positioning
+- `lib.playSyncScene()` - Scene execution with callbacks
+- Perfect timing coordination between driver and guards
+- Real animation dictionary usage (`random@security_van`)
+
+#### **Quick Demo Commands**
+
+```lua
+-- Register these commands in your resource
+RegisterCommand('start_casino_heist', function()
+    local CasinoHeist = require('api.sequences.examples.casino_heist')
+    CasinoHeist.start()
+end, false)
+
+RegisterCommand('start_market_robbery', function()
+    local MarketRobbery = require('api.sequences.examples.market_robbery')
+    MarketRobbery.startSimple()
+end, false)
+
+RegisterCommand('fleeca_real', function()
+    -- Real-world Fleeca truck replica with synchronized scenes
+end, false)
+
+RegisterCommand('fleeca_enhanced', function()
+    -- Enhanced version with case handling  
+end, false)
+
+RegisterCommand('stop_heists', function()
+    for id in pairs(lib.getAllActiveSequences()) do
+        lib.cancelSequence(id)
+    end
+end, false)
+```
+
+#### **Custom Gang Robbery**
+
+```lua
+-- Create a custom 3-member gang robbery
+local gang = {
+    leader = lib.spawnPed("g_m_m_armboss_01", coords + vector3(5.0, 0.0, 0.0), 270.0),
+    muscle = lib.spawnPed("g_m_m_chemwork_01", coords + vector3(7.0, 2.0, 0.0), 270.0),
+    lookout = lib.spawnPed("g_m_y_mexgang_01", coords + vector3(7.0, -2.0, 0.0), 270.0)
+}
+
+-- Leader approaches and threatens
+lib.quickSequence(gang.leader, {
+    { type = "goto_entity", params = { target = PlayerPedId(), distance = 2.0 } },
+    { type = "play_anim", params = { dict = "gestures@m@standing@casual", anim = "gesture_point" } },
+    { type = "hands_up", params = { duration = 3000 } }
+})
+
+-- Muscle flanks from side
+lib.quickSequence(gang.muscle, {
+    { type = "goto_coord", params = { coords = GetEntityCoords(PlayerPedId()) + vector3(3.0, 2.0, 0.0) } },
+    { type = "turn_to_face_entity", params = { target = PlayerPedId() } }
+})
+
+-- Lookout watches for police
+lib.createPatrolSequence(gang.lookout, {
+    coords + vector3(10.0, 0.0, 0.0),
+    coords + vector3(15.0, 5.0, 0.0),
+    coords + vector3(15.0, -5.0, 0.0)
+}, { scenarios = {"WORLD_HUMAN_BINOCULARS", "WORLD_HUMAN_GUARD_STAND"} })
     {
         config = {
             position = goldLocation,
