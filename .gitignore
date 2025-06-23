@@ -42,3 +42,6 @@ api/database/server.lua
 test_streaming_audio.lua
 api/camera/examples.lua
 
+scripts/version.lua
+scripts/bump.ps1
+scripts/bump
