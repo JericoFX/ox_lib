@@ -1,3 +1,9 @@
-local utils = require "wrappers.utils"
+if IsDuplicityVersion() then
+    return {}
+end
 
-return utils.createWrapper('voice', 'voice')
+if GetResourceState('pma-voice') == 'started' then
+    return require 'wrappers.voice.pma-voice.client'
+end
+
+return {}

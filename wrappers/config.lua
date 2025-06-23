@@ -62,5 +62,22 @@ return {
         ['LegacyFuel'] = 'LegacyFuel',
         ['lc_fuel']    = 'lc_fuel',
         ['lj-fuel']    = 'lj-fuel'
+    },
+
+    -- Clothing Systems
+    clothing = {
+        ['illenium-appearance'] = 'illenium-appearance',
+        ['bostra_appearance']   = 'bostra_appearance',
+        ['fivem-appearance']    = 'fivem-appearance',
+        ['qb-clothing']         = 'qb-clothing',
+        ['esx_skin']            = 'esx_skin',
+        ['clothing']            = 'clothing'
+    },
+
+    -- Housing Systems
+    housing = {
+        ['qb-houses']   = 'qb-houses',
+        ['ox_property'] = 'ox_property',
+        ['ps-housing']  = 'ps-housing'
     }
 }

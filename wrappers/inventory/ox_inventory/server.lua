@@ -7,7 +7,7 @@ if GetResourceState('ox_inventory') ~= 'started' then
     return
 end
 local ox_inventory = exports.ox_inventory
-local Normalizer = require 'wrappers.core.normalizer'
+local Normalizer = require 'wrappers.normalizer'
 
 -- Local helpers --------------------------------------------------------------
 local function getItem(source, item, metadata, strict)

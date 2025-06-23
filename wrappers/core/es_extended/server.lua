@@ -7,7 +7,7 @@ if GetResourceState('es_extended') ~= 'started' then
 end
 
 local ESX       = exports['es_extended']:getSharedObject()
-local normalize = require 'wrappers.core.normalizer'
+local normalize = require 'wrappers.normalizer'
 
 -- Mapping for shared normalizer ---------------------------------------------
 local map       = {
@@ -60,8 +60,6 @@ RegisterNetEvent('esx:setAccountMoney', function() invalidate(source) end)
 RegisterNetEvent('esx:setJob', function() invalidate(source) end)
 
 -- Helpers --------------------------------------------------------------------
-local Core = {}
-
 local function getESX(src)
     local entry = esxCache[src]
     local t = now()
@@ -81,85 +79,14 @@ local function getNormalised(src)
         name       = esx.getName(),
         job        = esx.job,
         accounts   = esx.accounts,
-        metadata   = esx.getMeta and esx:getMeta() or {},
+        metadata   = esx.getMeta and esx.getMeta() or {},
     }
     local norm = normalize(data, map)
     normCache[src] = norm
     return norm
 end
 
--- Class ----------------------------------------------------------------------
-
--- Money ----------------------------------------------------------------------
-function Core:wallet(account)
-    account = account or 'cash'
-    local esx = getESX(self.source)
-    if not esx then return 0 end
-    if account == 'cash' then return esx.getMoney() end
-    local acc = esx.getAccount(account)
-    return acc and acc.money or 0
-end
-
-function Core:walletAdd(amount, account)
-    local esx = getESX(self.source)
-    if not esx then return false end
-    account = account or 'cash'
-    if account == 'cash' then
-        esx.addMoney(amount)
-    else
-        esx.addAccountMoney(account, amount)
-    end
-    invalidate(self.source)
-    return true
-end
-
-function Core:walletRemove(amount, account)
-    local esx = getESX(self.source)
-    if not esx then return false end
-    account = account or 'cash'
-    if account == 'cash' then
-        esx.removeMoney(amount)
-    else
-        esx.removeAccountMoney(account, amount)
-    end
-    invalidate(self.source)
-    return true
-end
-
--- Job / Role -----------------------------------------------------------------
-function Core:role()
-    local esx = getESX(self.source); return esx and esx.job.name
-end
-
-function Core:roleLabel()
-    local esx = getESX(self.source); return esx and esx.job.label
-end
-
-function Core:roleGrade()
-    local esx = getESX(self.source); return esx and esx.job.grade
-end
-
-function Core:roleSet(job, grade)
-    local esx = getESX(self.source)
-    if not esx then return false end
-    esx.setJob(job, grade or 0)
-    invalidate(self.source)
-    return true
-end
-
--- Static helpers -------------------------------------------------------------
-function Core.of(src) return Core(src) end
-
-function Core.players()
-    local list = {}
-    local players = ESX.GetExtendedPlayers()
-    for i = 1, #players do
-        list[#list + 1] = Core(players[i].source)
-    end
-    return list
-end
-
--- NEW IMPLEMENTATION: Replace class-based export with simple table functions
+-- Table-based implementation -------------------------------------------------
 local core = {}
 core.framework = 'esx'
 

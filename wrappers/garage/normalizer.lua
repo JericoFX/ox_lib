@@ -1,4 +1,4 @@
-local N = require 'wrappers.core.normalizer'
+local N = require 'wrappers.normalizer'
 
 local lib = lib or {}
 
@@ -80,6 +80,9 @@ function M.storeVehicle(...) impl('storeVehicle')(...) end
 
 -- Anunciamos capability
 N.capabilities.garage = true
-N.garage = M
+N.garage.openMenu     = M.openMenu
+N.garage.getVehicles  = M.getVehicles
+N.garage.spawnVehicle = M.spawnVehicle
+N.garage.storeVehicle = M.storeVehicle
 
 return M

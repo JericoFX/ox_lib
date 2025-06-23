@@ -78,7 +78,7 @@ local marker_mt = {
   type = 0,
   width = 2.,
   height = 1.,
-  color = {r = 255, g = 100, b = 0, a = 100},
+  color = { r = 255, g = 100, b = 0, a = 100 },
   rotation = vector3_zero,
   direction = vector3_zero,
   bobUpAndDown = false,
@@ -102,8 +102,8 @@ end
 ---@param options MarkerProps
 function lib.marker.new(options)
   options.type =
-    type(options.type) == 'string' and markerTypes[options.type]
-    or type(options.type) == 'number' and options.type or nil
+      type(options.type) == 'string' and markerTypes[options.type]
+      or type(options.type) == 'number' and options.type or nil
 
   local self = setmetatable(options, marker_mt)
 

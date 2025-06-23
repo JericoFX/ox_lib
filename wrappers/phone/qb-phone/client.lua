@@ -1,4 +1,5 @@
 local Phone = lib.class('phone')
+local Normalizer = require 'wrappers.normalizer'
 
 function Phone:constructor()
     self.system = 'qb-phone'
@@ -34,5 +35,14 @@ function Phone:isOpen()
     return exports['qb-phone']:isPhoneOpen()
 end
 
-return Phone
+-- Register implementation in Normalizer ------------------------------------
+Normalizer.phone.sendMessage   = function(...) return Phone:sendMessage(...) end
+Normalizer.phone.addContact    = function(...) return Phone:addContact(...) end
+Normalizer.phone.removeContact = function(...) return Phone:removeContact(...) end
+Normalizer.phone.notification  = function(...) return Phone:notification(...) end
+Normalizer.phone.open          = function(...) return Phone:open(...) end
+Normalizer.phone.close         = function(...) return Phone:close(...) end
+Normalizer.phone.isOpen        = function(...) return Phone:isOpen(...) end
+Normalizer.capabilities.phone  = true
 
+return Phone

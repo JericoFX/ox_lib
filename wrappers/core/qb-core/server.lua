@@ -1,6 +1,6 @@
 --[[
     QBCore Server Wrapper (clean rewrite)
-    Provides a consistent, class-based API mirroring the client wrapper.
+    Provides a consistent, table-based API following server wrapper standards.
 ]]
 
 if GetResourceState('qb-core') ~= 'started' then
@@ -8,7 +8,7 @@ if GetResourceState('qb-core') ~= 'started' then
 end
 
 local QBCore    = exports['qb-core']:GetCoreObject()
-local normalize = require 'wrappers.core.normalizer'
+local normalize = require 'wrappers.normalizer'
 
 -- Framework-specific mapping for the shared normalizer ------------------------
 local map       = {
@@ -78,95 +78,7 @@ local function getNormalised(src)
     return normalised
 end
 
--- Class -----------------------------------------------------------------------
-local Core = {}
-
----@param src number
-function Core:constructor(src)
-    self.source = src
-end
-
-function Core:player()
-    return getNormalised(self.source)
-end
-
--- Money ----------------------------------------------------------------------
-function Core:wallet(account)
-    account = account or 'cash'
-    local qb = getQB(self.source)
-    return qb and qb.PlayerData.money[account] or 0
-end
-
-function Core:walletAdd(amount, account)
-    local qb = getQB(self.source)
-    if not qb then return false end
-    qb.Functions.AddMoney(account or 'cash', amount)
-    invalidate(self.source)
-    return true
-end
-
-function Core:walletRemove(amount, account)
-    local qb = getQB(self.source)
-    if not qb then return false end
-    qb.Functions.RemoveMoney(account or 'cash', amount)
-    invalidate(self.source)
-    return true
-end
-
--- Job / Role ------------------------------------------------------------------
-function Core:role()
-    local qb = getQB(self.source); return qb and qb.PlayerData.job.name
-end
-
-function Core:roleLabel()
-    local qb = getQB(self.source); return qb and qb.PlayerData.job.label
-end
-
-function Core:roleGrade()
-    local qb = getQB(self.source); return qb and qb.PlayerData.job.grade.level
-end
-
-function Core:roleSet(job, grade)
-    local qb = getQB(self.source)
-    if not qb then return false end
-    qb.Functions.SetJob(job, grade or 0)
-    invalidate(self.source)
-    return true
-end
-
--- Gang / Guild ----------------------------------------------------------------
-function Core:guild()
-    local qb = getQB(self.source); return qb and qb.PlayerData.gang.name
-end
-
-function Core:guildLabel()
-    local qb = getQB(self.source); return qb and qb.PlayerData.gang.label
-end
-
-function Core:guildGrade()
-    local qb = getQB(self.source); return qb and qb.PlayerData.gang.grade.level
-end
-
-function Core:guildSet(gang, grade)
-    local qb = getQB(self.source)
-    if not qb then return false end
-    qb.Functions.SetGang(gang, grade or 0)
-    invalidate(self.source)
-    return true
-end
-
--- Static helpers --------------------------------------------------------------
-function Core.of(src) return Core(src) end
-
-function Core.players()
-    local list = {}
-    for _, id in ipairs(GetPlayers()) do
-        list[#list + 1] = Core(tonumber(id))
-    end
-    return list
-end
-
--- NEW IMPLEMENTATION: simple table export
+-- Table-based implementation -------------------------------------------------
 local core = {}
 core.framework = 'qb-core'
 

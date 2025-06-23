@@ -1,48 +1,48 @@
-if GetResourceState('qb-houses') ~= 'started' then
+if GetResourceState('ps-housing') ~= 'started' then
     return {}
 end
 
 local Normalizer = require 'wrappers.normalizer'
 
 local enterHouse = function(source, houseId)
-    TriggerClientEvent('qb-houses:client:enterHouse', source, houseId)
+    TriggerClientEvent('ps-housing:client:enterHouse', source, houseId)
 end
 
 local exitHouse = function(source)
-    TriggerClientEvent('qb-houses:client:exitHouse', source)
+    TriggerClientEvent('ps-housing:client:exitHouse', source)
 end
 
 local createHouse = function(coords, price, owner, houseType)
     local success, result = pcall(function()
-        return exports['qb-houses']:createHouse(coords, price, owner, houseType or 'house')
+        return exports['ps-housing']:createHouse(coords, price, owner, houseType or 'house')
     end)
     return success and result or false
 end
 
 local buyHouse = function(source, houseId)
     local success, result = pcall(function()
-        return exports['qb-houses']:buyHouse(source, houseId)
+        return exports['ps-housing']:buyHouse(source, houseId)
     end)
     return success and result or false
 end
 
 local getPlayerHouses = function(source)
     local success, result = pcall(function()
-        return exports['qb-houses']:getPlayerHouses(source)
+        return exports['ps-housing']:getPlayerHouses(source)
     end)
     return success and result or {}
 end
 
 local isPlayerInsideHouse = function(source)
     local success, result = pcall(function()
-        return exports['qb-houses']:isPlayerInsideHouse(source)
+        return exports['ps-housing']:isPlayerInsideHouse(source)
     end)
     return success and result or false
 end
 
 local getHouseInfo = function(houseId)
     local success, result = pcall(function()
-        return exports['qb-houses']:getHouseInfo(houseId)
+        return exports['ps-housing']:getHouseInfo(houseId)
     end)
     return success and result or nil
 end
@@ -58,7 +58,7 @@ Normalizer.housing.getHouseInfo = getHouseInfo
 Normalizer.capabilities.housing = true
 
 return {
-    system = 'qb-houses',
+    system = 'ps-housing',
 
     enterHouse = enterHouse,
     exitHouse = exitHouse,

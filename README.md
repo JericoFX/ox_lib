@@ -40,6 +40,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.fuel` - Universal fuel wrapper (cdn-fuel/ox_fuel/ps-fuel/LegacyFuel/lc_fuel/lj-fuel)
 - `lib.phone` - Universal phone wrapper (qb-phone/qs-smartphone/lb-phone/renewed-phone/high_phone)
 - `lib.banking` - Universal banking wrapper (okokBanking/qb-banking/etc)
+- `lib.clothing` - **NEW!** Universal clothing wrapper (illenium-appearance/qb-clothing/fivem-appearance/bostra_appearance/esx_skin/clothing)
 - `lib.tickets` - **NEW!** Advanced ticket system with player reporting and staff management
 
 ### 🆕 **Unified Core API Aliases**
@@ -79,56 +80,214 @@ These aliases complement the existing method names (`getJob`, `addMoney`, etc.) 
 - **Singleton pattern** for direct access
 - **Lazy loading** for performance
 - **Backward compatibility** with existing ox_lib imports
-- **Shared Player Data Normalizer** centralises framework-specific mappings into `wrappers/core/normalizer.lua`, reducing duplication across wrappers.
+- **Universal API** for seamless integration across different frameworks and systems
 
-**New Normalizer Inventory helpers**
+---
 
-The core now exposes a minimal, typed inventory interface at `normalizer.inventory`:
+## 👕 **NEW: Universal Clothing Wrapper System**
 
-- `getItem(source, item, metadata?, strict?)`
-- `addItem(source, item, count, metadata?)`
-- `removeItem(source, item, count, metadata?, slot?)`
+The **Universal Clothing Wrapper System** provides a consistent API across all popular FiveM clothing systems, allowing seamless integration regardless of which clothing resource you're using.
 
-Each wrapper registers its own implementation. The core applies a single-read cache so returned values are invalidated immediately after usage, avoiding stale data without long-lived memory overhead.
+### **Supported Systems**
 
-**New Normalizer Dispatch helpers**
+- **illenium-appearance** - Advanced appearance system with tattoos, UI from ox_lib
+- **bostra_appearance** - Enhanced fork of illenium-appearance with camera controls
+- **fivem-appearance** - Original appearance system with configuration options
+- **qb-clothing** - QBCore's clothing system with component-based approach
+- **esx_skin + skinchanger** - Classic ESX skin system
+- **clothing** - Modern clothing system with items support
 
-`normalizer.dispatch` provides a unified API for server-side alert integration across popular dispatch systems:
+### **Auto-Detection**
 
-- `sendAlert(data)` – generic alert
-- `sendPoliceAlert(data)`
-- `sendEMSAlert(data)`
-- `sendFireAlert(data)`
-- `sendMechanicAlert(data)`
-- `sendCustomAlert(data)`
+The wrapper automatically detects which clothing system is installed and uses the appropriate implementation:
 
-**New Normalizer Fuel helpers**
+```lua
+-- Works with any supported clothing system
+local clothing = lib.clothing
 
-`normalizer.fuel` abstracts the most common fuel operations:
+-- Open clothing menu (universal across all systems)
+clothing:openClothing()
 
-- `getFuel(vehicle)` – returns current fuel level
-- `setFuel(vehicle, fuel)` – sets fuel level
-- `addFuel(vehicle, amount)` – increments fuel
+-- Save and load outfits
+clothing:saveOutfit('work_outfit', outfit_data)
+clothing:loadOutfit('work_outfit')
 
-**New Normalizer Voice helpers**
+-- Get/set player appearance
+local appearance = clothing:getPlayerClothing()
+clothing:setPlayerClothing(appearance)
+```
 
-`normalizer.voice` offers a standardised voice API:
+### **Universal Methods**
 
-- `setPlayerRadio(frequency)`
-- `setPlayerPhone(callId)`
-- `setProximityRange(range)`
-- `mutePlayer(player, muted)`
+**Core Methods:**
 
-**New Normalizer Targeting helpers**
+- `:openClothing(config?)` - Open clothing customization menu
+- `:openOutfits()` - Open saved outfits menu
+- `:saveOutfit(name, outfit?)` - Save current or specified outfit
+- `:loadOutfit(name)` - Load a saved outfit
+- `:getPlayerClothing()` - Get current player appearance
+- `:setPlayerClothing(appearance)` - Set player appearance
 
-`normalizer.targeting` exposes a minimal client-side wrapper for the most common targeting operations shared by **qb-target**, **bt-target** and **ox_target**:
+**System-Specific Methods:**
 
-- `addEntity(entity, options)` – register interaction options for a specific entity
-- `removeEntity(entity)` – remove all options previously added to an entity
-- `addZone(name, coords, options)` – create a box zone with interaction options
-- `removeZone(name)` – delete a previously created zone by name
+- `:openShop(shopType)` - Open clothing/barber/tattoo shop
+- `:openPedMenu()` - Open ped customization (illenium/bostra)
+- `:takeOffClothing(component)` - Remove clothing item (clothing system)
+- `:isWearing(index)` - Check if wearing specific item (clothing system)
+- `:changeSkin(skinData)` - Change skin component (esx_skin)
 
-Every targeting system wrapper maps its native exports to this interface, so the same call works no matter which resource is running. Use it exactly as you would call the original exports, but without worrying about the underlying implementation.
+### **Example Usage**
+
+```lua
+-- Basic clothing operations
+RegisterCommand('outfit', function()
+    local clothing = lib.clothing
+
+    -- Open clothing menu
+    clothing:openClothing()
+end)
+
+-- Save current outfit
+RegisterCommand('saveoutfit', function(source, args)
+    local clothing = lib.clothing
+    local outfitName = args[1] or 'default'
+
+    clothing:saveOutfit(outfitName)
+    lib.notify({
+        title = 'Outfit Saved',
+        description = 'Outfit "' .. outfitName .. '" saved successfully',
+        type = 'success'
+    })
+end)
+
+-- Advanced usage with appearance data
+RegisterNetEvent('clothing:loadWorkOutfit')
+AddEventHandler('clothing:loadWorkOutfit', function()
+    local clothing = lib.clothing
+
+    -- Get current appearance for backup
+    local currentAppearance = clothing:getPlayerClothing()
+
+    -- Load work outfit
+    clothing:loadOutfit('work_uniform')
+
+    -- Store civilian clothes for later
+    TriggerServerEvent('clothing:storeCivilianClothes', currentAppearance)
+end)
+```
+
+---
+
+## 💰 **NEW: Universal Banking Wrapper System**
+
+The **Universal Banking Wrapper System** provides a consistent API across all popular FiveM banking systems, allowing seamless integration regardless of which banking resource you're using.
+
+### **Supported Systems**
+
+- **okokBanking** - Advanced banking system with multiple account types and transaction history
+- **qb-banking** - QBCore's banking system with checking and savings accounts
+- **Renewed-Banking** - Modern banking system with enhanced features
+- **pickle_banking** - Lightweight banking system with essential features
+- **esx_atm** - Classic ESX banking integration using core wallet functions
+
+### **Auto-Detection**
+
+The wrapper automatically detects which banking system is installed and uses the appropriate implementation:
+
+```lua
+-- Works with any supported banking system
+local banking = lib.banking
+
+-- Open banking interface (universal across all systems)
+banking:openBanking()
+
+-- Check if banking interface is open
+local isOpen = banking:isBankingOpen()
+
+-- Close banking interface
+banking:closeBanking()
+```
+
+### **Universal Methods**
+
+**Client Methods (use colon `:`):**
+
+- `:openBanking()` - Open banking interface
+- `:closeBanking()` - Close banking interface
+- `:isBankingOpen()` - Check if banking interface is open
+
+**Server Methods (use dot `.`):**
+
+- `.addMoney(source, amount, account?)` - Add money to player account
+- `.removeMoney(source, amount, account?)` - Remove money from player account
+- `.getMoney(source, account?)` - Get player account balance
+- `.transferMoney(fromSource, toSource, amount, fromAccount?, toAccount?)` - Transfer money between players
+- `.createAccount(source, accountName, accountType?)` - Create new account
+- `.addTransaction(source, account, amount, reason, type?)` - Add transaction record
+
+### **Example Usage**
+
+```lua
+-- Client-side banking operations
+RegisterCommand('bank', function()
+    local banking = lib.banking
+
+    -- Open banking menu
+    banking:openBanking()
+end)
+
+-- Check if banking is open
+CreateThread(function()
+    while true do
+        Wait(1000)
+        local banking = lib.banking
+
+        if banking:isBankingOpen() then
+            print("Banking interface is currently open")
+        end
+    end
+end)
+
+-- Server-side banking operations
+RegisterCommand('addmoney', function(source, args)
+    local amount = tonumber(args[1])
+    local account = args[2] or 'checking'
+
+    if amount and amount > 0 then
+        local success = lib.banking.addMoney(source, amount, account)
+        if success then
+            TriggerClientEvent('chat:addMessage', source, {
+                color = {0, 255, 0},
+                multiline = true,
+                args = {"Banking", string.format("Added $%d to your %s account", amount, account)}
+            })
+        end
+    end
+end)
+
+-- Transfer money between players
+RegisterServerEvent('banking:transferMoney')
+AddEventHandler('banking:transferMoney', function(targetSource, amount, fromAccount, toAccount)
+    local source = source
+
+    local success = lib.banking.transferMoney(source, targetSource, amount, fromAccount, toAccount)
+    if success then
+        TriggerClientEvent('banking:transferSuccess', source)
+        TriggerClientEvent('banking:transferReceived', targetSource, amount)
+    else
+        TriggerClientEvent('banking:transferFailed', source)
+    end
+end)
+
+-- Check account balance
+RegisterServerEvent('banking:checkBalance')
+AddEventHandler('banking:checkBalance', function(account)
+    local source = source
+    local balance = lib.banking.getMoney(source, account or 'checking')
+
+    TriggerClientEvent('banking:balanceResponse', source, balance, account)
+end)
+```
 
 ---
 
@@ -1016,6 +1175,14 @@ local cachedData = lib.events.cache.getPlayer() -- Convenience access
 lib.inventory.addItem(source, 'bread', 5)
 local count = lib.inventory.getItemCount(source, 'bread')
 
+-- Universal wrapper examples
+lib.banking.addMoney(source, 1000, 'checking')
+lib.fuel.setFuel(vehicle, 75.0)
+lib.dispatch.sendPoliceAlert({title = 'Bank Robbery', coords = coords})
+lib.phone.sendMessage('555-1234', 'Hello!')
+lib.clothing.openClothing()
+lib.garage.openMenu({index = 'pillboxgarage'})
+
 -- Shared enums for consistency
 SetVehicleDoorOpen(vehicle, lib.enums.vehicles.DOORS.FRONT_LEFT, false, false)
 TaskStartScenarioInPlace(ped, lib.enums.tasks.TASKS.MECHANIC, 0, true)
@@ -1369,7 +1536,7 @@ lib.createPatrolSequence(guardPed, {
 local seq1, seq2 = lib.createConversationSequence(ped1, ped2, {
     ped1_dict = "gestures@m@standing@casual",
     ped1_anim = "gesture_hello",
-    ped2_dict = "gestures@f@standing@casual", 
+    ped2_dict = "gestures@f@standing@casual",
     ped2_anim = "gesture_point"
 }, 8000)
 ```
@@ -1398,8 +1565,8 @@ local sequenceId = lib.createSequence({
         {
             type = "goto_entity",
             params = { target = PlayerPedId(), distance = 2.0 },
-            condition = function(ped) 
-                return #(GetEntityCoords(ped) - GetEntityCoords(PlayerPedId())) > 10.0 
+            condition = function(ped)
+                return #(GetEntityCoords(ped) - GetEntityCoords(PlayerPedId())) > 10.0
             end
         },
         {
@@ -1516,6 +1683,7 @@ end)
 ```
 
 **Advanced Features Used:**
+
 - `lib.createSyncScene()` - Network synchronized scenes
 - `lib.getAnimPosition()` - Precise animation positioning
 - `lib.playSyncScene()` - Scene execution with callbacks
@@ -1541,7 +1709,7 @@ RegisterCommand('fleeca_real', function()
 end, false)
 
 RegisterCommand('fleeca_enhanced', function()
-    -- Enhanced version with case handling  
+    -- Enhanced version with case handling
 end, false)
 
 RegisterCommand('stop_heists', function()
@@ -2081,3 +2249,99 @@ local list = lib.achievements:getAll(source)
 - `getAll(src)` – Get a table of all achievements unlocked by a player.
 
 The module resides at `imports/achievements.lua` and is resolved automatically the first time `lib.achievements` is referenced.
+
+---
+
+## 🏠 **NEW: Universal Housing Wrapper System**
+
+The **Universal Housing Wrapper System** provides a consistent API across all popular FiveM housing systems, enabling seamless property management regardless of which housing resource you're using.
+
+### **Supported Systems**
+
+- **qb-houses** - QBCore's housing system with apartments and houses
+- **ox_property** - Modern property system with advanced features
+- **ps-housing** - Project Sloth housing system with enhanced customization
+
+### **Auto-Detection**
+
+The wrapper automatically detects which housing system is installed and uses the appropriate implementation:
+
+```lua
+-- Works with any supported housing system
+local housing = lib.housing
+
+-- Enter a house/property (universal across all systems)
+housing:enterHouse(houseId)
+
+-- Exit current house/property
+housing:exitHouse()
+
+-- Check if player is inside a property
+local isInside = housing:isPlayerInsideHouse()
+```
+
+### **Universal Methods**
+
+**Client Methods (use colon `:`):**
+
+- `:enterHouse(houseId)` - Enter a specific house/property
+- `:exitHouse()` - Exit current house/property
+- `:createHouse(coords, price, houseType?)` - Create new house at coordinates
+- `:buyHouse(houseId)` - Purchase a specific house
+- `:openHouseMenu()` - Open house management menu
+- `:getPlayerHouses()` - Get list of player-owned houses
+- `:isPlayerInsideHouse()` - Check if player is inside property
+- `:getCurrentHouse()` - Get current house data
+- `:openInventory()` - Open house inventory (ps-housing)
+
+**Server Methods (use dot `.`):**
+
+- `.enterHouse(source, houseId)` - Teleport player into house
+- `.exitHouse(source)` - Teleport player out of house
+- `.createHouse(coords, price, owner, houseType?)` - Create new house
+- `.buyHouse(source, houseId)` - Process house purchase
+- `.getPlayerHouses(source)` - Get player's owned houses
+- `.isPlayerInsideHouse(source)` - Check if player is inside property
+- `.getHouseInfo(houseId)` - Get house information
+- `.setHouseOwner(houseId, owner)` - Change house ownership (ox_property/ps-housing)
+- `.deleteHouse(houseId)` - Delete house (ps-housing)
+
+### **Example Usage**
+
+```lua
+-- Client-side housing operations
+RegisterCommand('house', function()
+    local housing = lib.housing
+
+    -- Open house menu
+    housing:openHouseMenu()
+end)
+
+-- Check player houses
+RegisterCommand('myhouses', function()
+    local housing = lib.housing
+    local houses = housing:getPlayerHouses()
+
+    for i, house in ipairs(houses) do
+        print(('House %d: %s at %s'):format(i, house.label or 'Unknown', tostring(house.coords)))
+    end
+end)
+
+-- Server-side housing management
+RegisterNetEvent('housing:createHouse')
+AddEventHandler('housing:createHouse', function(coords, price)
+    local source = source
+    local housing = lib.housing
+
+    -- Create house for player
+    local houseId = housing.createHouse(coords, price, GetPlayerIdentifier(source), 'house')
+
+    if houseId then
+        TriggerClientEvent('ox_lib:notify', source, {
+            title = 'House Created',
+            description = 'House created successfully',
+            type = 'success'
+        })
+    end
+end)
+```

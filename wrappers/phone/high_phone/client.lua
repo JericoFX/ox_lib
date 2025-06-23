@@ -1,42 +1,56 @@
+--[[
+    High Phone Wrapper - Client Side
+]]
+
+if GetResourceState('high_phone') ~= 'started' then
+    return {}
+end
+
 local Phone = lib.class('phone')
 local Normalizer = require 'wrappers.normalizer'
 
 function Phone:constructor()
-    self.system = 'lb-phone'
-end
-
-local function _notify(payload)
-    TriggerEvent('lb-phone:client:Notification', payload)
+    self.system = 'high_phone'
 end
 
 function Phone:sendMessage(number, message)
-    _notify({ title = 'Messages', text = message, icon = 'fa fa-comment', timeout = 5000, color = '#25D366' })
+    TriggerEvent('high_phone:client:sendMessage', number, message)
+    return true
 end
 
 function Phone:addContact(name, number, avatar)
-    TriggerServerEvent('lb-phone:server:AddContact', name, number, avatar or '')
+    TriggerEvent('high_phone:client:addContact', name, number, avatar or '')
+    return true
 end
 
 function Phone:removeContact(number)
-    TriggerServerEvent('lb-phone:server:RemoveContact', number)
+    TriggerEvent('high_phone:client:removeContact', number)
+    return true
 end
 
 function Phone:notification(title, text, icon, color, timeout)
-    _notify({ title = title, text = text, icon = icon or 'fa fa-info-circle', timeout = timeout or 5000, color = color or '#4299e1' })
+    TriggerEvent('high_phone:client:notification', {
+        title = title,
+        text = text,
+        icon = icon or 'fa fa-info-circle',
+        color = color or '#4299e1',
+        timeout = timeout or 5000
+    })
+    return true
 end
 
 function Phone:open()
-    TriggerEvent('lb-phone:client:ToggleOpen', true)
+    TriggerEvent('high_phone:client:open')
     return true
 end
 
 function Phone:close()
-    TriggerEvent('lb-phone:client:ToggleOpen', false)
+    TriggerEvent('high_phone:client:close')
     return true
 end
 
 function Phone:isOpen()
-    return exports['lb-phone']:isOpen() or false
+    return exports['high_phone']:isOpen() or false
 end
 
 -- Register implementation in Normalizer ------------------------------------

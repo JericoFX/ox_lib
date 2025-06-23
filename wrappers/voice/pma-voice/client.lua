@@ -1,33 +1,36 @@
-local Normalizer = require 'wrappers.core.normalizer'
-
-local Voice = lib.class('Voice')
-
-function Voice:constructor()
-    self.system = 'pma-voice'
-    self.voice = exports['pma-voice']
+if GetResourceState('pma-voice') ~= 'started' then
+    return {}
 end
 
-function Voice:setPlayerRadio(frequency)
-    self.voice:setPlayerRadio(frequency)
+local normalizer = require 'wrappers.normalizer'
+local voice = exports['pma-voice']
+
+local function setPlayerRadio(frequency)
+    voice:setPlayerRadio(frequency)
 end
 
-function Voice:setPlayerPhone(callId)
-    self.voice:setPlayerCall(callId)
+local function setPlayerPhone(callId)
+    voice:setPlayerCall(callId)
 end
 
-function Voice:setProximityRange(range)
-    self.voice:setRange(range)
+local function setProximityRange(range)
+    voice:setRange(range)
 end
 
-function Voice:mutePlayer(player, muted)
-    self.voice:toggleMutePlayer(player, muted)
+local function mutePlayer(player, muted)
+    voice:toggleMutePlayer(player, muted)
 end
 
--- Register implementation in Normalizer -------------------------------------------------------
-Normalizer.voice.setPlayerRadio    = function(...) return Voice:setPlayerRadio(...) end
-Normalizer.voice.setPlayerPhone    = function(...) return Voice:setPlayerPhone(...) end
-Normalizer.voice.setProximityRange = function(...) return Voice:setProximityRange(...) end
-Normalizer.voice.mutePlayer        = function(...) return Voice:mutePlayer(...) end
-Normalizer.capabilities.voice      = true
+normalizer.voice.setPlayerRadio = setPlayerRadio
+normalizer.voice.setPlayerPhone = setPlayerPhone
+normalizer.voice.setProximityRange = setProximityRange
+normalizer.voice.mutePlayer = mutePlayer
+normalizer.capabilities.voice = true
 
-return Voice
+return {
+    system = 'pma-voice',
+    setPlayerRadio = setPlayerRadio,
+    setPlayerPhone = setPlayerPhone,
+    setProximityRange = setProximityRange,
+    mutePlayer = mutePlayer
+}
