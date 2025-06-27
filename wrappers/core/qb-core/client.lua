@@ -165,7 +165,13 @@ function Core:getPlayerData()
         return cachedData
     end
 
-    -- Fallback to QB-Core API
+    -- Intentar refrescar la caché (p. ej. si el resource empezó con el jugador ya conectado)
+    local refreshed = self:refreshCache()
+    if refreshed then
+        return refreshed
+    end
+
+    -- Fallback a la API directa de QB-Core si todo lo anterior falla
     local playerData = QBCore.Functions.GetPlayerData()
     return normalizePlayerData(playerData)
 end

@@ -178,9 +178,9 @@ end
 
 -- Core methods using universal cache
 function Core:getPlayerData()
-    local cachedData = getFromUniversalCache('playerData')
-    if cachedData then
-        return cachedData
+    local refreshed = self:refreshCache()
+    if refreshed then
+        return refreshed
     end
 
     -- Fallback to ESX API
