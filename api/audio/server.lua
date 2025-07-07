@@ -99,24 +99,14 @@ function streamingAudio.playSoundFromCoords(options)
 
     local range = options.range or 10
 
-    local players = GetPlayers()
-    for _, playerId in ipairs(players) do
-        local playerPed = GetPlayerPed(playerId)
-        if playerPed and DoesEntityExist(playerPed) then
-            local playerCoords = GetEntityCoords(playerPed)
-            local distance = #(vector3(options.coords.x, options.coords.y, options.coords.z) - playerCoords)
-
-            if distance <= range then
-                TriggerClientEvent('ox_lib:streamingAudio:playSoundFromCoords', playerId, {
-                    audioBank = options.audioBank,
-                    audioName = audioName,
-                    audioRef = options.audioRef,
-                    coords = options.coords,
-                    range = range
-                })
-            end
-        end
-    end
+    -- Send to all clients and let client handle range verification since GetPlayerPed is unreliable on server
+    TriggerClientEvent('ox_lib:streamingAudio:playSoundFromCoords', -1, {
+        audioBank = options.audioBank,
+        audioName = audioName,
+        audioRef = options.audioRef,
+        coords = options.coords,
+        range = range
+    })
 end
 
 lib.streamingAudio = streamingAudio

@@ -1,653 +1,1247 @@
 ---@meta
 
----@class VehicleCreateOptions
----@field plate? string License plate text
----@field type? string Vehicle type ('automobile', 'bike', 'boat', 'heli', 'plane', 'submarine', 'trailer', 'train')
----@field properties? table Vehicle properties to apply after creation
----@field networked? boolean Whether vehicle should be networked (default: true)
-
 ---@class lib.vehicle
----@field vehicle number? The vehicle entity this instance controls
-lib.vehicle = lib.class("vehicle")
+---@field spawn fun(model: string | number, coords: vector3 | table, heading?: number, properties?: table, isTemporary?: boolean): number | nil
+---@field despawn fun(entity: number, force?: boolean): boolean
+---@field setProperties fun(entity: number, properties: table): boolean
+---@field getProperties fun(entity: number): table | nil
+---@field isValidVehicle fun(entity: number): boolean
+---@field giveKeys fun(entity: number, playerId: number): boolean
+---@field removeKeys fun(entity: number, playerId: number): boolean
+---@field hasKeys fun(entity: number, playerId: number): boolean
+---@field setOwner fun(entity: number, playerId: number): boolean
+---@field getOwner fun(entity: number): number | nil
+---@field setTuning fun(entity: number, tuning: table): boolean
+---@field getTuning fun(entity: number): table | nil
+---@field setUpgrades fun(entity: number, upgrades: table): boolean
+---@field getUpgrades fun(entity: number): table | nil
+---@field heal fun(entity: number): boolean
+---@field lock fun(entity: number, state: number): boolean
+---@field unlock fun(entity: number): boolean
+---@field isLocked fun(entity: number): boolean
+---@field getEngineHealth fun(entity: number): number | nil
+---@field setEngineHealth fun(entity: number, health: number): boolean
+---@field getBodyHealth fun(entity: number): number | nil
+---@field setBodyHealth fun(entity: number, health: number): boolean
+---@field setPetrolTankHealth fun(entity: number, health: number): boolean
+---@field getPetrolTankHealth fun(entity: number): number | nil
+---@field repair fun(entity: number): boolean
+---@field setDirt fun(entity: number, level: number): boolean
+---@field getDirt fun(entity: number): number | nil
+---@field wash fun(entity: number): boolean
+---@field setPlate fun(entity: number, plate: string): boolean
+---@field getPlate fun(entity: number): string | nil
+---@field generatePlate fun(): string
+---@field isPlateAvailable fun(plate: string): boolean
+---@field setLivery fun(entity: number, livery: number): boolean
+---@field getLivery fun(entity: number): number | nil
+---@field getMaxLiveries fun(entity: number): number
+---@field setRoofLivery fun(entity: number, livery: number): boolean
+---@field getRoofLivery fun(entity: number): number | nil
+---@field getMaxRoofLiveries fun(entity: number): number
+---@field setNumberPlateTextIndex fun(entity: number, plateIndex: number): boolean
+---@field getNumberPlateTextIndex fun(entity: number): number | nil
+---@field setMod fun(entity: number, modType: number, modIndex: number, customTires?: boolean): boolean
+---@field getMod fun(entity: number, modType: number): number | nil
+---@field removeMod fun(entity: number, modType: number): boolean
+---@field setNeonLights fun(entity: number, left: boolean, right: boolean, front: boolean, back: boolean): boolean
+---@field getNeonLights fun(entity: number): table | nil
+---@field setNeonColor fun(entity: number, r: number, g: number, b: number): boolean
+---@field getNeonColor fun(entity: number): table | nil
+---@field setTyreSmokeColor fun(entity: number, r: number, g: number, b: number): boolean
+---@field getTyreSmokeColor fun(entity: number): table | nil
+---@field setWindowTint fun(entity: number, tint: number): boolean
+---@field getWindowTint fun(entity: number): number | nil
+---@field setXenonLights fun(entity: number, enabled: boolean, color?: number): boolean
+---@field getXenonLights fun(entity: number): table | nil
+---@field setTurbo fun(entity: number, enabled: boolean): boolean
+---@field getTurbo fun(entity: number): boolean | nil
+---@field setHorn fun(entity: number, hornId: number): boolean
+---@field getHorn fun(entity: number): number | nil
+---@field setExtra fun(entity: number, extraId: number, enabled: boolean): boolean
+---@field getExtra fun(entity: number, extraId: number): boolean | nil
+---@field setFuel fun(entity: number, fuel: number): boolean
+---@field getFuel fun(entity: number): number | nil
+---@field setOilLevel fun(entity: number, oil: number): boolean
+---@field getOilLevel fun(entity: number): number | nil
+---@field getVehicleData fun(entity: number): table | nil
+---@field saveVehicle fun(entity: number, owner?: number): table | nil
+---@field loadVehicle fun(data: table, coords?: vector3 | table, heading?: number): number | nil
 
----Vehicle API Class - Server Side
----Vehicle management system for server-side
----@param vehicle? number If passed, it's for that specific vehicle. If not passed, creates empty instance
----@return lib.vehicle
-function lib.vehicle:constructor(vehicle)
-    if vehicle then
-        if DoesEntityExist(vehicle) and GetEntityType(vehicle) == 2 then
-            self.vehicle = vehicle
-        else
-            self.vehicle = nil
-        end
-    else
-        self.vehicle = nil
-    end
-end
+-- Vehicle cache for tracking spawned vehicles
+local spawnedVehicles = {}
+local vehicleKeys = {}
+local vehicleOwners = {}
+
+-- Vehicle API - Server Side
+local vehicle = {}
 
 -- =====================================
--- VALIDATION FUNCTIONS
+-- VEHICLE SPAWNING AND MANAGEMENT
 -- =====================================
 
----Check if the vehicle instance is valid
----@return boolean valid True if vehicle exists and is valid
-function lib.vehicle:isValid()
-    return self.vehicle and self.vehicle ~= 0 and DoesEntityExist(self.vehicle) and GetEntityType(self.vehicle) == 2
-end
-
----Get the vehicle entity ID
----@return number? vehicle The vehicle entity or nil if invalid
-function lib.vehicle:getEntity()
-    if self:isValid() then
-        return self.vehicle
+---Spawns a vehicle at specified coordinates
+---@param model string | number Vehicle model hash or name
+---@param coords vector3 | table Spawn coordinates
+---@param heading? number Vehicle heading (default: 0.0)
+---@param properties? table Vehicle properties to apply
+---@param isTemporary? boolean Whether vehicle should be cleaned up automatically
+---@return number | nil entity Vehicle entity handle or nil if failed
+function vehicle.spawn(model, coords, heading, properties, isTemporary)
+    if type(model) == 'string' then
+        model = GetHashKey(model)
     end
-    return nil
-end
 
----Set a new vehicle entity for this instance
----@param vehicle number The new vehicle entity
----@return boolean success True if the vehicle was set successfully
-function lib.vehicle:setVehicle(vehicle)
-    if vehicle and DoesEntityExist(vehicle) and GetEntityType(vehicle) == 2 then
-        self.vehicle = vehicle
-        return true
+    if type(coords) == 'table' and coords.x then
+        coords = vector3(coords.x, coords.y, coords.z)
     end
-    return false
-end
 
----Static function to create an instance from any vehicle entity
----@param vehicle number Vehicle entity
----@return lib.vehicle? instance Vehicle instance or nil if invalid
-function lib.vehicle.fromEntity(vehicle)
-    if vehicle and DoesEntityExist(vehicle) and GetEntityType(vehicle) == 2 then
-        return lib.vehicle:new(vehicle)
-    end
-    return nil
-end
+    local entity = CreateVehicleServerSetter(model, 'automobile', coords.x, coords.y, coords.z, heading or 0.0)
 
--- =====================================
--- CREATION FUNCTIONS
--- =====================================
-
----Static function to create a vehicle
----@param model string|number Vehicle model name or hash
----@param coords vector3|table Vehicle spawn coordinates
----@param heading? number Vehicle heading in degrees (default: 0.0)
----@param options? VehicleCreateOptions Additional creation options
----@return lib.vehicle? instance Vehicle instance or nil if failed
-function lib.vehicle.create(model, coords, heading, options)
-    options = options or {}
-
-    if type(model) ~= 'string' and type(model) ~= 'number' then
+    if not DoesEntityExist(entity) then
+        lib.logger:error('vehicle', 'Failed to spawn vehicle model: %s', model)
         return nil
     end
 
-    if type(coords) ~= 'vector3' and type(coords) ~= 'table' then
+    -- Apply properties if provided
+    if properties then
+        vehicle.setProperties(entity, properties)
+    end
+
+    -- Track spawned vehicle
+    spawnedVehicles[entity] = {
+        model = model,
+        spawned = GetGameTimer(),
+        isTemporary = isTemporary or false,
+        coords = coords,
+        heading = heading
+    }
+
+    lib.logger:debug('vehicle', 'Vehicle spawned - Entity: %s, Model: %s', entity, model)
+    return entity
+end
+
+---Despawns a vehicle entity
+---@param entity number Vehicle entity handle
+---@param force? boolean Force deletion even if occupied
+---@return boolean success Whether vehicle was successfully deleted
+function vehicle.despawn(entity, force)
+    if not DoesEntityExist(entity) then
+        lib.logger:warn('vehicle', 'Invalid vehicle entity: %s', entity)
+        return false
+    end
+
+    TaskEveryoneLeaveVehicle(entity)
+
+    -- Clean up tracking data
+    spawnedVehicles[entity] = nil
+    vehicleKeys[entity] = nil
+    vehicleOwners[entity] = nil
+
+    DeleteEntity(entity)
+    lib.logger:debug('vehicle', 'Vehicle despawned - Entity: %s', entity)
+    return true
+end
+
+---Checks if entity is a valid vehicle
+---@param entity number Entity handle to check
+---@return boolean isValid Whether entity is a valid vehicle
+function vehicle.isValidVehicle(entity)
+    return DoesEntityExist(entity)
+end
+
+-- =====================================
+-- VEHICLE PROPERTIES
+-- =====================================
+
+---Sets vehicle properties from a table
+---@param entity number Vehicle entity handle
+---@param properties table Properties table (from ox_lib vehicleProperties)
+---@return boolean success Whether properties were applied successfully
+function vehicle.setProperties(entity, properties)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server can only set StateBag, actual property application happens on client
+    local netId = NetworkGetNetworkIdFromEntity(entity)
+    if not netId then
+        lib.logger:warn('vehicle', 'Cannot set properties - entity not networked: %s', entity)
+        return false
+    end
+
+    -- This triggers client-side property application via StateBag listener
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+
+    lib.logger:debug('vehicle', 'Properties requested for vehicle: %s (NetID: %s)', entity, netId)
+    return true
+end
+
+---Gets vehicle properties as a table
+---@param entity number Vehicle entity handle
+---@return table | nil properties Vehicle properties or nil if failed
+function vehicle.getProperties(entity)
+    if not vehicle.isValidVehicle(entity) then
         return nil
     end
 
-    heading = heading or 0.0
+    -- Server cannot get detailed properties - this must be handled client-side
+    -- Return cached StateBag data if available, or request from client
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
 
-    local vehicleCoords = coords
-    if type(coords) == 'table' then
-        vehicleCoords = vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
+    if cachedProperties then
+        return cachedProperties
     end
 
-    local modelHash = type(model) == 'string' and joaat(model) or model
-
-    -- Trigger hook before creating vehicle
-    if lib.hooks and lib.hooks.trigger then
-        local allowed = lib.hooks.trigger('vehicle:before_create', model, vehicleCoords, heading, options)
-        if not allowed then
-            return nil
-        end
-    end
-
-    local vehicleType = options.type or 'automobile'
-
-    local vehicle = CreateVehicleServerSetter(modelHash, vehicleType, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading)
-
-    if not vehicle or vehicle == 0 then
-        return nil
-    end
-
-    local vehicleInstance = lib.vehicle:new(vehicle)
-
-    if options.plate then
-        SetVehicleNumberPlateText(vehicle, options.plate)
-    end
-
-    if options.properties then
-        lib.setVehicleProperties(vehicle, options.properties)
-    end
-
-    -- Trigger hook after creating vehicle
-    if lib.hooks and lib.hooks.trigger then
-        lib.hooks.trigger('vehicle:after_create', vehicleInstance, model, vehicleCoords, heading, options)
-    end
-
-    return vehicleInstance
-end
-
----Static function to create multiple vehicles
----@param vehicles table[] List of vehicle creation data
----@return lib.vehicle[] instances Array of created vehicle instances
-function lib.vehicle.createMultiple(vehicles)
-    local results = {}
-
-    for i, vehicleData in ipairs(vehicles) do
-        local instance = lib.vehicle.create(
-            vehicleData.model,
-            vehicleData.coords,
-            vehicleData.heading,
-            vehicleData.options
-        )
-        results[i] = instance
-    end
-
-    return results
-end
-
--- =====================================
--- SERVER FUNCTIONS
--- =====================================
-
-function lib.vehicle:getModel()
-    if not self:isValid() then return nil end
-    return GetEntityModel(self.vehicle)
-end
-
-function lib.vehicle:getCoords()
-    if not self:isValid() then return nil end
-    return GetEntityCoords(self.vehicle)
-end
-
-function lib.vehicle:setCoords(coords, teleport)
-    if not self:isValid() then return false end
-
-    if type(coords) == 'vector3' then
-        SetEntityCoords(self.vehicle, coords.x, coords.y, coords.z, false, false, false, teleport ~= false)
-    elseif type(coords) == 'table' then
-        SetEntityCoords(self.vehicle, coords.x or coords[1], coords.y or coords[2], coords.z or coords[3], false, false, false, teleport ~= false)
-    else
-        return false
-    end
-
-    return true
-end
-
-function lib.vehicle:getHeading()
-    if not self:isValid() then return 0.0 end
-    return GetEntityHeading(self.vehicle)
-end
-
-function lib.vehicle:setHeading(heading)
-    if not self:isValid() then return false end
-    SetEntityHeading(self.vehicle, heading)
-    return true
-end
-
-function lib.vehicle:getRotation()
-    if not self:isValid() then return nil end
-    return GetEntityRotation(self.vehicle)
-end
-
-function lib.vehicle:setRotation(rotation)
-    if not self:isValid() then return false end
-
-    if type(rotation) == 'vector3' then
-        SetEntityRotation(self.vehicle, rotation.x, rotation.y, rotation.z, 2)
-    elseif type(rotation) == 'table' then
-        SetEntityRotation(self.vehicle, rotation.x or rotation[1], rotation.y or rotation[2], rotation.z or rotation[3], 2)
-    else
-        return false
-    end
-
-    return true
-end
-
-function lib.vehicle:getEngineHealth()
-    if not self:isValid() then return 0 end
-    return GetVehicleEngineHealth(self.vehicle)
-end
-
-function lib.vehicle:setEngineHealth(health)
-    if not self:isValid() then return false end
-    if health < 0 or health > 1000 then return false end
-    SetVehicleEngineHealth(self.vehicle, health + 0.0)
-    return true
-end
-
-function lib.vehicle:getBodyHealth()
-    if not self:isValid() then return 0 end
-    return GetVehicleBodyHealth(self.vehicle)
-end
-
-function lib.vehicle:setBodyHealth(health)
-    if not self:isValid() then return false end
-    if health < 0 or health > 1000 then return false end
-    SetVehicleBodyHealth(self.vehicle, health + 0.0)
-    return true
-end
-
-function lib.vehicle:getPetrolTankHealth()
-    if not self:isValid() then return 0 end
-    return GetVehiclePetrolTankHealth(self.vehicle)
-end
-
-function lib.vehicle:setPetrolTankHealth(health)
-    if not self:isValid() then return false end
-    if health < 0 or health > 1000 then return false end
-    SetVehiclePetrolTankHealth(self.vehicle, health + 0.0)
-    return true
-end
-
-function lib.vehicle:getFuelLevel()
-    if not self:isValid() then return 0.0 end
-    return GetVehicleFuelLevel(self.vehicle)
-end
-
-function lib.vehicle:setFuelLevel(level)
-    if not self:isValid() then return false end
-    if level < 0 or level > 100.0 then return false end
-    SetVehicleFuelLevel(self.vehicle, level + 0.0)
-    return true
-end
-
-function lib.vehicle:isEngineOn()
-    if not self:isValid() then return false end
-    return GetIsVehicleEngineRunning(self.vehicle)
-end
-
-function lib.vehicle:setEngineOn(state, instantly)
-    if not self:isValid() then return false end
-    SetVehicleEngineOn(self.vehicle, state, instantly or false, true)
-    return true
-end
-
-function lib.vehicle:isLocked()
-    if not self:isValid() then return false end
-    return GetVehicleDoorLockStatus(self.vehicle) ~= 0
-end
-
-function lib.vehicle:setLocked(state)
-    if not self:isValid() then return false end
-    SetVehicleDoorsLocked(self.vehicle, state and 2 or 1)
-    return true
-end
-
-function lib.vehicle:repair()
-    if not self:isValid() then return false end
-
-    -- Trigger hook before repairing vehicle
-    if lib.hooks and lib.hooks.trigger then
-        local allowed = lib.hooks.trigger('vehicle:before_repair', self.vehicle, self)
-        if not allowed then
-            return false
-        end
-    end
-
-    SetVehicleFixed(self.vehicle)
-    SetVehicleDeformationFixed(self.vehicle)
-    SetVehicleUndriveable(self.vehicle, false)
-    SetVehicleEngineOn(self.vehicle, true, true, true)
-
- 
-
-    return true
-end
-
-function lib.vehicle:explode(damageSource, hasEntityDamage)
-    if not self:isValid() then return false end
-
-    -- Trigger hook before exploding vehicle
-    if lib.hooks and lib.hooks.trigger then
-        local allowed = lib.hooks.trigger('vehicle:before_explode', self.vehicle, self, damageSource, hasEntityDamage)
-        if not allowed then
-            return false
-        end
-    end
-
-    damageSource = damageSource or 0
-    hasEntityDamage = hasEntityDamage ~= false
-
-    ExplodeVehicle(self.vehicle, hasEntityDamage, false)
-
- 
-
-    return true
-end
-
-function lib.vehicle:getDriver()
-    if not self:isValid() then return nil end
-    local driver = GetPedInVehicleSeat(self.vehicle, -1)
-    return driver ~= 0 and driver or nil
-end
-
-function lib.vehicle:getPassenger(seatIndex)
-    if not self:isValid() then return nil end
-    local passenger = GetPedInVehicleSeat(self.vehicle, seatIndex)
-    return passenger ~= 0 and passenger or nil
-end
-
-function lib.vehicle:getOccupants()
-    if not self:isValid() then return {} end
-
-    local occupants = {}
-    local maxSeats = GetVehicleMaxNumberOfPassengers(self.vehicle)
-
-    local driver = self:getDriver()
-    if driver then
-        occupants[-1] = driver
-    end
-
-    for seat = 0, maxSeats - 1 do
-        local passenger = self:getPassenger(seat)
-        if passenger then
-            occupants[seat] = passenger
-        end
-    end
-
-    return occupants
-end
-
-function lib.vehicle:hasFreeSeat()
-    if not self:isValid() then return false end
-
-    local maxSeats = GetVehicleMaxNumberOfPassengers(self.vehicle) + 1
-    local occupants = self:getOccupants()
-
-    local occupiedCount = 0
-    for _ in pairs(occupants) do
-        occupiedCount = occupiedCount + 1
-    end
-
-    return occupiedCount < maxSeats
-end
-
-function lib.vehicle:getFreeSeat()
-    if not self:isValid() then return nil end
-
-    if not self:getDriver() then
-        return -1
-    end
-
-    local maxSeats = GetVehicleMaxNumberOfPassengers(self.vehicle)
-    for seat = 0, maxSeats - 1 do
-        if not self:getPassenger(seat) then
-            return seat
-        end
-    end
-
-    return nil
-end
-
-function lib.vehicle:setPlayerIntoVehicle(source, seat)
-    if not self:isValid() then return false end
-
-    seat = seat or -1
-
- 
-
-    local ped = GetPlayerPed(source)
-    if ped and ped ~= 0 then
-        SetPedIntoVehicle(ped, self.vehicle, seat)
-
-        -- Trigger hook after setting player into vehicle
-        if lib.hooks and lib.hooks.trigger then
-            lib.hooks.trigger('vehicle:after_set_player', self.vehicle, self, source, seat, ped)
-        end
-
-        return true
-    end
-
-    return false
-end
-
----Get complete vehicle properties using ox_lib system
----@return table? properties Complete vehicle properties table
-function lib.vehicle:getProperties()
-    if not self:isValid() then return nil end
-    return lib.getVehicleProperties(self.vehicle)
-end
-
----Set complete vehicle properties using ox_lib system
----@param properties table Vehicle properties table
----@param fixVehicle? boolean Fix vehicle after setting properties
----@return boolean success True if properties were set successfully
-function lib.vehicle:setProperties(properties, fixVehicle)
-    if not self:isValid() then return false end
-    if type(properties) ~= 'table' then return false end
-
-    lib.setVehicleProperties(self.vehicle, properties)
-    return true
-end
-
--- =====================================
--- MODIFICATION FUNCTIONS
--- =====================================
-
-function lib.vehicle:setMod(mod, value)
-    if not self:isValid() then return false end
-    local props = {}
-    if type(mod) == 'number' then
-        props['mod' .. mod] = value
-    elseif type(mod) == 'string' then
-        if not mod:find('^mod') then
-            mod = 'mod' .. mod:gsub("^%l", string.upper)
-        end
-        props[mod] = value
-    else
-        return false
-    end
-    lib.setVehicleProperties(self.vehicle, props)
-    return true
-end
-
-function lib.vehicle:setMods(mods)
-    if not self:isValid() then return false end
-    if type(mods) ~= 'table' then return false end
-    lib.setVehicleProperties(self.vehicle, mods)
-    return true
-end
-
-function lib.vehicle:setExtra(extraId, enabled)
-    if not self:isValid() then return false end
-    local props = { extras = { [extraId] = enabled and 0 or 1 } }
-    lib.setVehicleProperties(self.vehicle, props)
-    return true
-end
-
-function lib.vehicle:setExtras(extras)
-    if not self:isValid() then return false end
-    if type(extras) ~= 'table' then return false end
-    local props = { extras = extras }
-    lib.setVehicleProperties(self.vehicle, props)
-    return true
-end
-
-function lib.vehicle:setNeon(enabled, color)
-    if not self:isValid() then return false end
-    local props = {}
-    if enabled ~= nil then
-        if type(enabled) == 'table' then
-            props.neonEnabled = enabled
-        elseif type(enabled) == 'boolean' then
-            props.neonEnabled = { enabled, enabled, enabled, enabled }
-        end
-    end
-    if color then
-        props.neonColor = color
-    end
-    lib.setVehicleProperties(self.vehicle, props)
-    return true
-end
-
--- =====================================
--- DELETION FUNCTIONS
--- =====================================
-
-function lib.vehicle:delete()
-    if not self:isValid() then return false end
-
-    -- Trigger hook before deleting vehicle
-    if lib.hooks and lib.hooks.trigger then
-        local allowed = lib.hooks.trigger('vehicle:before_delete', self.vehicle, self)
-        if not allowed then
-            return false
-        end
-    end
-
-    local vehicleEntity = self.vehicle
-    DeleteEntity(vehicleEntity)
-
-    local success = not DoesEntityExist(vehicleEntity)
-
-    if success then
-        -- Trigger hook after deleting vehicle
-        if lib.hooks and lib.hooks.trigger then
-            lib.hooks.trigger('vehicle:after_delete', vehicleEntity, self)
-        end
-
-        self.vehicle = nil
-    end
-
-    return success
-end
-
-function lib.vehicle.deleteEntity(vehicleEntity)
-    if not vehicleEntity or vehicleEntity == 0 or not DoesEntityExist(vehicleEntity) then
-        return false
-    end
-
-    DeleteEntity(vehicleEntity)
-    return not DoesEntityExist(vehicleEntity)
-end
-
-function lib.vehicle.deleteMultiple(vehicles)
-    local results = {}
-
-    for i, vehicle in ipairs(vehicles) do
-        local vehicleEntity = vehicle
-
-        if type(vehicle) == 'table' and vehicle.vehicle then
-            vehicleEntity = vehicle.vehicle
-        end
-
-        results[i] = lib.vehicle.deleteEntity(vehicleEntity)
-    end
-
-    return results
-end
-
--- =====================================
--- UTILITY FUNCTIONS
--- =====================================
-
----Static function to get all vehicles
----@return number[] vehicles Array of all vehicle entities
-function lib.vehicle.getAllVehicles()
-    return GetAllVehicles()
-end
-
----Static function to get vehicles in area
----@param coords vector3|table Center coordinates
----@param radius? number Search radius (default: 50.0)
----@return table[] vehicles Array of nearby vehicles with distance info
-function lib.vehicle.getVehiclesInArea(coords, radius)
-    if type(coords) ~= 'vector3' and type(coords) ~= 'table' then
-        return {}
-    end
-
-    radius = radius or 50.0
-
-    local vehicles = lib.vehicle.getAllVehicles()
-    local nearbyVehicles = {}
-    local centerCoords = type(coords) == 'vector3' and coords or vector3(coords.x or coords[1], coords.y or coords[2], coords.z or coords[3])
-
-    for i = 1, #vehicles do
-        local vehicle = vehicles[i]
-        local vehicleCoords = GetEntityCoords(vehicle)
-        local distance = #(centerCoords - vehicleCoords)
-
-        if distance <= radius then
-            table.insert(nearbyVehicles, {
-                vehicle = vehicle,
-                coords = vehicleCoords,
-                distance = distance,
-                instance = lib.vehicle.fromEntity(vehicle)
-            })
-        end
-    end
-
-    table.sort(nearbyVehicles, function(a, b)
-        return a.distance < b.distance
-    end)
-
-    return nearbyVehicles
-end
-
----Static function to get player's vehicle
----@param source number Player source
----@return lib.vehicle? instance Vehicle instance or nil if player not in vehicle
-function lib.vehicle.getPlayerVehicle(source)
-    local ped = GetPlayerPed(source)
-    if ped and ped ~= 0 and IsPedInAnyVehicle(ped) then
-        local vehicle = GetVehiclePedIsIn(ped, false)
-        if vehicle and vehicle ~= 0 then
-            return lib.vehicle.fromEntity(vehicle)
-        end
-    end
+    lib.logger:warn('vehicle', 'Properties not available on server for entity: %s - use client-side getVehicleProperties', entity)
     return nil
 end
 
 -- =====================================
--- SYNC SYSTEM SERVER EVENTS
+-- VEHICLE KEYS AND OWNERSHIP
 -- =====================================
 
----Validate if player has access to vehicle
----@param playerId number Player ID
----@param networkId number Vehicle network ID
----@return boolean hasAccess True if player has access
-function lib.vehicle.hasAccess(playerId, networkId)
-    local vehicle = NetworkGetEntityFromNetworkId(networkId)
-    if not DoesEntityExist(vehicle) then return false end
+---Gives keys to a player for a vehicle
+---@param entity number Vehicle entity handle
+---@param playerId number Player server ID
+---@return boolean success Whether keys were given successfully
+function vehicle.giveKeys(entity, playerId)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
 
-    local playerPed = GetPlayerPed(playerId)
-    local playerCoords = GetEntityCoords(playerPed)
-    local vehicleCoords = GetEntityCoords(vehicle)
+    if not vehicleKeys[entity] then
+        vehicleKeys[entity] = {}
+    end
 
-    if #(playerCoords - vehicleCoords) > 10.0 then return false end
-
-    local driver = GetPedInVehicleSeat(vehicle, -1)
-    if driver == playerPed then return true end
-
+    vehicleKeys[entity][playerId] = true
+    lib.logger:debug('vehicle', 'Keys given to player %s for vehicle: %s', playerId, entity)
     return true
 end
 
----Handle vehicle properties changes
-RegisterNetEvent('ox_lib:vehiclePropertiesChanged', function(networkId, properties)
-    local source = source
-    local vehicle = NetworkGetEntityFromNetworkId(networkId)
+---Removes keys from a player for a vehicle
+---@param entity number Vehicle entity handle
+---@param playerId number Player server ID
+---@return boolean success Whether keys were removed successfully
+function vehicle.removeKeys(entity, playerId)
+    if not vehicle.isValidVehicle(entity) or not vehicleKeys[entity] then
+        return false
+    end
 
-    if not DoesEntityExist(vehicle) then return end
+    vehicleKeys[entity][playerId] = nil
+    lib.logger:debug('vehicle', 'Keys removed from player %s for vehicle: %s', playerId, entity)
+    return true
+end
 
-    if not lib.vehicle.hasAccess(source, networkId) then
-        print(('Player %s attempted to modify vehicle %s without permission'):format(source, networkId))
-        return
+---Checks if a player has keys for a vehicle
+---@param entity number Vehicle entity handle
+---@param playerId number Player server ID
+---@return boolean hasKeys Whether player has keys
+function vehicle.hasKeys(entity, playerId)
+    if not vehicle.isValidVehicle(entity) or not vehicleKeys[entity] then
+        return false
+    end
+
+    return vehicleKeys[entity][playerId] == true
+end
+
+---Sets the owner of a vehicle
+---@param entity number Vehicle entity handle
+---@param playerId number Player server ID
+---@return boolean success Whether ownership was set
+function vehicle.setOwner(entity, playerId)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    vehicleOwners[entity] = playerId
+    vehicle.giveKeys(entity, playerId) -- Owner automatically gets keys
+    lib.logger:debug('vehicle', 'Owner set to player %s for vehicle: %s', playerId, entity)
+    return true
+end
+
+---Gets the owner of a vehicle
+---@param entity number Vehicle entity handle
+---@return number | nil ownerId Player server ID or nil if no owner
+function vehicle.getOwner(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return vehicleOwners[entity]
+end
+
+-- =====================================
+-- VEHICLE MODIFICATIONS
+-- =====================================
+
+---Sets vehicle tuning (performance modifications)
+---@param entity number Vehicle entity handle
+---@param tuning table Tuning modifications
+---@return boolean success Whether tuning was applied
+function vehicle.setTuning(entity, tuning)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot apply tuning directly - delegate to client via properties
+    local properties = { tuning = tuning }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+
+    lib.logger:debug('vehicle', 'Tuning requested for vehicle: %s', entity)
+    return true
+end
+
+---Gets vehicle tuning modifications
+---@param entity number Vehicle entity handle
+---@return table | nil tuning Tuning modifications or nil
+function vehicle.getTuning(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get tuning details - must be handled client-side
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+
+    if cachedProperties and cachedProperties.tuning then
+        return cachedProperties.tuning
+    end
+
+    lib.logger:warn('vehicle', 'Tuning data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle upgrades (turbo, armor, etc.)
+---@param entity number Vehicle entity handle
+---@param upgrades table Upgrade modifications
+---@return boolean success Whether upgrades were applied
+function vehicle.setUpgrades(entity, upgrades)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot apply upgrades directly - delegate to client via properties
+    local properties = {
+        modTurbo = upgrades.turbo,
+        modXenon = upgrades.xenon,
+        bulletProofTyres = upgrades.bulletProofTyres
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+
+    lib.logger:debug('vehicle', 'Upgrades requested for vehicle: %s', entity)
+    return true
+end
+
+---Gets vehicle upgrades
+---@param entity number Vehicle entity handle
+---@return table | nil upgrades Vehicle upgrades or nil
+function vehicle.getUpgrades(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get upgrade details - must be handled client-side
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+
+    if cachedProperties then
+        return {
+            turbo = cachedProperties.modTurbo,
+            xenon = cachedProperties.modXenon,
+            bulletProofTyres = cachedProperties.bulletProofTyres
+        }
+    end
+
+    lib.logger:warn('vehicle', 'Upgrade data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+-- =====================================
+-- VEHICLE HEALTH AND REPAIR
+-- =====================================
+
+---Heals a vehicle to full health
+---@param entity number Vehicle entity handle
+---@return boolean success Whether vehicle was healed
+function vehicle.heal(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot apply visual fixes directly - delegate to client
+    local properties = {
+        engineHealth = 1000.0,
+        bodyHealth = 1000.0,
+        tankHealth = 1000.0
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+
+    lib.logger:debug('vehicle', 'Vehicle heal requested: %s', entity)
+    return true
+end
+
+---Repairs a vehicle
+---@param entity number Vehicle entity handle
+---@return boolean success Whether vehicle was repaired
+function vehicle.repair(entity)
+    return vehicle.heal(entity)
+end
+
+---Gets vehicle engine health
+---@param entity number Vehicle entity handle
+---@return number | nil health Engine health (0-1000) or nil
+function vehicle.getEngineHealth(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleEngineHealth(entity)
+end
+
+---Sets vehicle engine health
+---@param entity number Vehicle entity handle
+---@param health number Engine health (0-1000)
+---@return boolean success Whether health was set
+function vehicle.setEngineHealth(entity, health)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleEngineHealth(entity, health)
+    return true
+end
+
+---Gets vehicle body health
+---@param entity number Vehicle entity handle
+---@return number | nil health Body health (0-1000) or nil
+function vehicle.getBodyHealth(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleBodyHealth(entity)
+end
+
+---Sets vehicle body health
+---@param entity number Vehicle entity handle
+---@param health number Body health (0-1000)
+---@return boolean success Whether health was set
+function vehicle.setBodyHealth(entity, health)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleBodyHealth(entity, health)
+    return true
+end
+
+---Gets vehicle petrol tank health
+---@param entity number Vehicle entity handle
+---@return number | nil health Petrol tank health (0-1000) or nil
+function vehicle.getPetrolTankHealth(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehiclePetrolTankHealth(entity)
+end
+
+---Sets vehicle petrol tank health
+---@param entity number Vehicle entity handle
+---@param health number Petrol tank health (0-1000)
+---@return boolean success Whether health was set
+function vehicle.setPetrolTankHealth(entity, health)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehiclePetrolTankHealth(entity, health)
+    return true
+end
+
+-- =====================================
+-- VEHICLE LOCKING
+-- =====================================
+
+---Locks a vehicle with specified lock state
+---@param entity number Vehicle entity handle
+---@param state number Lock state (0-4)
+---@return boolean success Whether vehicle was locked
+function vehicle.lock(entity, state)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleDoorsLocked(entity, state)
+    lib.logger:debug('vehicle', 'Vehicle locked with state %s: %s', state, entity)
+    return true
+end
+
+---Unlocks a vehicle
+---@param entity number Vehicle entity handle
+---@return boolean success Whether vehicle was unlocked
+function vehicle.unlock(entity)
+    return vehicle.lock(entity, 1) -- Unlocked
+end
+
+---Checks if vehicle is locked
+---@param entity number Vehicle entity handle
+---@return boolean locked Whether vehicle is locked
+function vehicle.isLocked(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    return GetVehicleDoorLockStatus(entity) ~= 1
+end
+
+-- =====================================
+-- VEHICLE APPEARANCE
+-- =====================================
+
+---Sets vehicle dirt level
+---@param entity number Vehicle entity handle
+---@param level number Dirt level (0.0-15.0)
+---@return boolean success Whether dirt was applied
+function vehicle.setDirt(entity, level)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleDirtLevel(entity, level)
+    return true
+end
+
+---Gets vehicle dirt level
+---@param entity number Vehicle entity handle
+---@return number | nil level Dirt level or nil
+function vehicle.getDirt(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleDirtLevel(entity)
+end
+
+---Washes a vehicle (removes dirt)
+---@param entity number Vehicle entity handle
+---@return boolean success Whether vehicle was washed
+function vehicle.wash(entity)
+    return vehicle.setDirt(entity, 0.0)
+end
+
+-- =====================================
+-- VEHICLE PLATES
+-- =====================================
+
+---Sets vehicle license plate
+---@param entity number Vehicle entity handle
+---@param plate string License plate text
+---@return boolean success Whether plate was set
+function vehicle.setPlate(entity, plate)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleNumberPlateText(entity, plate)
+    return true
+end
+
+---Gets vehicle license plate
+---@param entity number Vehicle entity handle
+---@return string | nil plate License plate text or nil
+function vehicle.getPlate(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleNumberPlateText(entity)
+end
+
+---Generates a random license plate
+---@return string plate Generated license plate
+function vehicle.generatePlate()
+    local chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    local numbers = '0123456789'
+    local plate = ''
+
+    -- Generate format: XXX 000
+    for i = 1, 3 do
+        plate = plate .. chars:sub(math.random(1, #chars), math.random(1, #chars))
+    end
+
+    plate = plate .. ' '
+
+    for i = 1, 3 do
+        plate = plate .. numbers:sub(math.random(1, #numbers), math.random(1, #numbers))
+    end
+
+    return plate
+end
+
+---Checks if a license plate is available
+---@param plate string License plate to check
+---@return boolean available Whether plate is available
+function vehicle.isPlateAvailable(plate)
+    -- This would typically check against a database
+    -- For now, return true as a placeholder
+    return true
+end
+
+-- =====================================
+-- VEHICLE LIVERIES
+-- =====================================
+
+---Sets vehicle livery
+---@param entity number Vehicle entity handle
+---@param livery number Livery index
+---@return boolean success Whether livery was set
+function vehicle.setLivery(entity, livery)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleLivery(entity, livery)
+    return true
+end
+
+---Gets vehicle livery
+---@param entity number Vehicle entity handle
+---@return number | nil livery Current livery index or nil
+function vehicle.getLivery(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleLivery(entity)
+end
+
+---Gets maximum liveries for vehicle
+---@param entity number Vehicle entity handle
+---@return number count Maximum livery count
+function vehicle.getMaxLiveries(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return 0
+    end
+
+    return GetVehicleLiveryCount(entity)
+end
+
+---Sets vehicle roof livery
+---@param entity number Vehicle entity handle
+---@param livery number Roof livery index
+---@return boolean success Whether roof livery was set
+function vehicle.setRoofLivery(entity, livery)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleRoofLivery(entity, livery)
+    return true
+end
+
+---Gets vehicle roof livery
+---@param entity number Vehicle entity handle
+---@return number | nil livery Current roof livery index or nil
+function vehicle.getRoofLivery(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleRoofLivery(entity)
+end
+
+---Gets maximum roof liveries for vehicle
+---@param entity number Vehicle entity handle
+---@return number count Maximum roof livery count
+function vehicle.getMaxRoofLiveries(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return 0
+    end
+
+    return GetVehicleRoofLiveryCount(entity)
+end
+
+-- =====================================
+-- VEHICLE MODS
+-- =====================================
+
+---Sets a vehicle modification
+---@param entity number Vehicle entity handle
+---@param modType number Modification type
+---@param modIndex number Modification index
+---@param customTires? boolean Whether to use custom tires
+---@return boolean success Whether mod was set
+function vehicle.setMod(entity, modType, modIndex, customTires)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot apply mods directly - delegate to client
+    local modKey = 'mod' .. modType
+    local properties = { [modKey] = modIndex }
+    if customTires ~= nil then
+        properties['customTires' .. modType] = customTires
+    end
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets a vehicle modification
+---@param entity number Vehicle entity handle
+---@param modType number Modification type
+---@return number | nil modIndex Current mod index or nil
+function vehicle.getMod(entity, modType)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get mod details - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        local modKey = 'mod' .. modType
+        return cachedProperties[modKey]
+    end
+
+    lib.logger:warn('vehicle', 'Mod data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Removes a vehicle modification
+---@param entity number Vehicle entity handle
+---@param modType number Modification type
+---@return boolean success Whether mod was removed
+function vehicle.removeMod(entity, modType)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot remove mods directly - delegate to client
+    local modKey = 'mod' .. modType
+    local properties = { [modKey] = -1 }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+-- =====================================
+-- ADVANCED FEATURES
+-- =====================================
+
+---Sets vehicle neon lights
+---@param entity number Vehicle entity handle
+---@param left boolean Left neon
+---@param right boolean Right neon
+---@param front boolean Front neon
+---@param back boolean Back neon
+---@return boolean success Whether neons were set
+function vehicle.setNeonLights(entity, left, right, front, back)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set neons directly - delegate to client
+    local properties = {
+        neonEnabled = { left, right, front, back }
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle neon lights status
+---@param entity number Vehicle entity handle
+---@return table | nil neons Neon status table or nil
+function vehicle.getNeonLights(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get neon details - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties and cachedProperties.neonEnabled then
+        return {
+            left = cachedProperties.neonEnabled[1],
+            right = cachedProperties.neonEnabled[2],
+            front = cachedProperties.neonEnabled[3],
+            back = cachedProperties.neonEnabled[4]
+        }
+    end
+
+    lib.logger:warn('vehicle', 'Neon data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle neon color
+---@param entity number Vehicle entity handle
+---@param r number Red value (0-255)
+---@param g number Green value (0-255)
+---@param b number Blue value (0-255)
+---@return boolean success Whether color was set
+function vehicle.setNeonColor(entity, r, g, b)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set neon color directly - delegate to client
+    local properties = {
+        neonColor = { r, g, b }
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle neon color
+---@param entity number Vehicle entity handle
+---@return table | nil color RGB color table or nil
+function vehicle.getNeonColor(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get neon color - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties and cachedProperties.neonColor then
+        local color = cachedProperties.neonColor
+        return { r = color[1], g = color[2], b = color[3] }
+    end
+
+    lib.logger:warn('vehicle', 'Neon color not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle tire smoke color
+---@param entity number Vehicle entity handle
+---@param r number Red value (0-255)
+---@param g number Green value (0-255)
+---@param b number Blue value (0-255)
+---@return boolean success Whether color was set
+function vehicle.setTyreSmokeColor(entity, r, g, b)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set tyre smoke color directly - delegate to client
+    local properties = {
+        tyreSmokeColor = { r, g, b }
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle tire smoke color
+---@param entity number Vehicle entity handle
+---@return table | nil color RGB color table or nil
+function vehicle.getTyreSmokeColor(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get tyre smoke color - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties and cachedProperties.tyreSmokeColor then
+        local color = cachedProperties.tyreSmokeColor
+        return { r = color[1], g = color[2], b = color[3] }
+    end
+
+    lib.logger:warn('vehicle', 'Tyre smoke color not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle window tint
+---@param entity number Vehicle entity handle
+---@param tint number Tint level (0-6)
+---@return boolean success Whether tint was set
+function vehicle.setWindowTint(entity, tint)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set window tint directly - delegate to client
+    local properties = {
+        windowTint = tint
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle window tint
+---@param entity number Vehicle entity handle
+---@return number | nil tint Tint level or nil
+function vehicle.getWindowTint(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get window tint - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        return cachedProperties.windowTint
+    end
+
+    lib.logger:warn('vehicle', 'Window tint not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle xenon lights
+---@param entity number Vehicle entity handle
+---@param enabled boolean Whether xenon is enabled
+---@param color? number Xenon color (0-12)
+---@return boolean success Whether xenon was set
+function vehicle.setXenonLights(entity, enabled, color)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set xenon directly - delegate to client
+    local properties = {
+        modXenon = enabled,
+        xenonColor = color
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle xenon lights
+---@param entity number Vehicle entity handle
+---@return table | nil xenon Xenon status and color or nil
+function vehicle.getXenonLights(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get xenon details - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        return {
+            enabled = cachedProperties.modXenon,
+            color = cachedProperties.xenonColor
+        }
+    end
+
+    lib.logger:warn('vehicle', 'Xenon data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle turbo
+---@param entity number Vehicle entity handle
+---@param enabled boolean Whether turbo is enabled
+---@return boolean success Whether turbo was set
+function vehicle.setTurbo(entity, enabled)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set turbo directly - delegate to client
+    local properties = {
+        modTurbo = enabled
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle turbo status
+---@param entity number Vehicle entity handle
+---@return boolean | nil enabled Turbo status or nil
+function vehicle.getTurbo(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get turbo status - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        return cachedProperties.modTurbo
+    end
+
+    lib.logger:warn('vehicle', 'Turbo status not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle horn
+---@param entity number Vehicle entity handle
+---@param hornId number Horn ID
+---@return boolean success Whether horn was set
+function vehicle.setHorn(entity, hornId)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set horn directly - delegate to client
+    local properties = {
+        modHorns = hornId
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle horn
+---@param entity number Vehicle entity handle
+---@return number | nil hornId Horn ID or nil
+function vehicle.getHorn(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get horn details - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        return cachedProperties.modHorns
+    end
+
+    lib.logger:warn('vehicle', 'Horn data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle extra
+---@param entity number Vehicle entity handle
+---@param extraId number Extra ID
+---@param enabled boolean Whether extra is enabled
+---@return boolean success Whether extra was set
+function vehicle.setExtra(entity, extraId, enabled)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set extras directly - delegate to client
+    local properties = {
+        extras = { [extraId] = enabled and 0 or 1 } -- Note: ox_lib uses inverted logic (0=enabled, 1=disabled)
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle extra status
+---@param entity number Vehicle entity handle
+---@param extraId number Extra ID
+---@return boolean | nil enabled Extra status or nil
+function vehicle.getExtra(entity, extraId)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get extra details - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties and cachedProperties.extras then
+        local extraValue = cachedProperties.extras[extraId]
+        return extraValue == 0 -- Note: ox_lib uses inverted logic (0=enabled, 1=disabled)
+    end
+
+    lib.logger:warn('vehicle', 'Extra data not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+---Sets vehicle number plate text index
+---@param entity number Vehicle entity handle
+---@param plateIndex number Plate index
+---@return boolean success Whether plate index was set
+function vehicle.setNumberPlateTextIndex(entity, plateIndex)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    -- Server cannot set plate index directly - delegate to client
+    local properties = {
+        plateIndex = plateIndex
+    }
+    Entity(entity).state:set('ox_lib:setVehicleProperties', properties, true)
+    return true
+end
+
+---Gets vehicle number plate text index
+---@param entity number Vehicle entity handle
+---@return number | nil plateIndex Plate index or nil
+function vehicle.getNumberPlateTextIndex(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    -- Server cannot get plate index - use cached properties
+    local stateBag = Entity(entity).state
+    local cachedProperties = stateBag and stateBag.vehicleProperties
+    if cachedProperties then
+        return cachedProperties.plateIndex
+    end
+
+    lib.logger:warn('vehicle', 'Plate index not available on server for entity: %s - use client-side', entity)
+    return nil
+end
+
+-- =====================================
+-- FUEL AND RESOURCES
+-- =====================================
+
+---Sets vehicle fuel level
+---@param entity number Vehicle entity handle
+---@param fuel number Fuel level (0-100)
+---@return boolean success Whether fuel was set
+function vehicle.setFuel(entity, fuel)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleFuelLevel(entity, fuel)
+    return true
+end
+
+---Gets vehicle fuel level
+---@param entity number Vehicle entity handle
+---@return number | nil fuel Fuel level or nil
+function vehicle.getFuel(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleFuelLevel(entity)
+end
+
+---Sets vehicle oil level
+---@param entity number Vehicle entity handle
+---@param oil number Oil level (0-100)
+---@return boolean success Whether oil was set
+function vehicle.setOilLevel(entity, oil)
+    if not vehicle.isValidVehicle(entity) then
+        return false
+    end
+
+    SetVehicleOilLevel(entity, oil)
+    return true
+end
+
+---Gets vehicle oil level
+---@param entity number Vehicle entity handle
+---@return number | nil oil Oil level or nil
+function vehicle.getOilLevel(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    return GetVehicleOilLevel(entity)
+end
+
+-- =====================================
+-- DATA MANAGEMENT
+-- =====================================
+
+---Gets comprehensive vehicle data
+---@param entity number Vehicle entity handle
+---@return table | nil data Complete vehicle data or nil
+function vehicle.getVehicleData(entity)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    local data = {
+        entity = entity,
+        model = GetEntityModel(entity),
+        plate = vehicle.getPlate(entity),
+        properties = vehicle.getProperties(entity),
+        health = {
+            engine = vehicle.getEngineHealth(entity),
+            body = vehicle.getBodyHealth(entity),
+            petrolTank = vehicle.getPetrolTankHealth(entity)
+        },
+        owner = vehicle.getOwner(entity),
+        spawned = spawnedVehicles[entity] and spawnedVehicles[entity].spawned or nil,
+        coords = GetEntityCoords(entity),
+        heading = GetEntityHeading(entity)
+    }
+
+    return data
+end
+
+---Saves vehicle data for persistence
+---@param entity number Vehicle entity handle
+---@param owner? number Owner player ID
+---@return table | nil data Saved vehicle data or nil
+function vehicle.saveVehicle(entity, owner)
+    if not vehicle.isValidVehicle(entity) then
+        return nil
+    end
+
+    local data = {
+        model = GetEntityModel(entity),
+        plate = vehicle.getPlate(entity),
+        properties = vehicle.getProperties(entity),
+        owner = owner or vehicle.getOwner(entity),
+        coords = GetEntityCoords(entity),
+        heading = GetEntityHeading(entity),
+        saved = GetGameTimer()
+    }
+
+    lib.logger:debug('vehicle', 'Vehicle saved - Entity: %s, Plate: %s', entity, data.plate)
+    return data
+end
+
+---Loads vehicle from saved data
+---@param data table Saved vehicle data
+---@param coords? vector3 | table Override spawn coordinates
+---@param heading? number Override spawn heading
+---@return number | nil entity Spawned vehicle entity or nil
+function vehicle.loadVehicle(data, coords, heading)
+    if not data or not data.model then
+        lib.logger:warn('vehicle', 'Invalid vehicle data provided')
+        return nil
+    end
+
+    local spawnCoords = coords or data.coords
+    local spawnHeading = heading or data.heading
+
+    local entity = vehicle.spawn(data.model, spawnCoords, spawnHeading, data.properties)
+
+    if entity then
+        if data.plate then
+            vehicle.setPlate(entity, data.plate)
+        end
+
+        if data.owner then
+            vehicle.setOwner(entity, data.owner)
+        end
+
+        lib.logger:debug('vehicle', 'Vehicle loaded - Entity: %s, Plate: %s', entity, data.plate)
+    end
+
+    return entity
+end
+
+-- =====================================
+-- CLEANUP AND MAINTENANCE
+-- =====================================
+
+-- Cleanup thread for temporary vehicles
+CreateThread(function()
+    while true do
+        Wait(60000) -- Check every minute
+
+        local currentTime = GetGameTimer()
+
+        for entity, data in pairs(spawnedVehicles) do
+            if data.isTemporary then
+                -- Remove temporary vehicles after 30 minutes if not occupied
+                if currentTime - data.spawned > 1800000 and GetVehicleNumberOfPassengers(entity) == 0 then
+                    vehicle.despawn(entity, true)
+                    lib.logger:debug('vehicle', 'Temporary vehicle cleaned up: %s', entity)
+                end
+            end
+
+            -- Clean up data for deleted vehicles
+            if not DoesEntityExist(entity) then
+                spawnedVehicles[entity] = nil
+                vehicleKeys[entity] = nil
+                vehicleOwners[entity] = nil
+            end
+        end
     end
 end)
 
----Handle trailer attachment sync
-RegisterNetEvent('ox_lib:syncTrailerAttachment', function(data)
-    local source = source
-
-    if not lib.vehicle.hasAccess(source, data.towVehicle) then
-        return
-    end
-
-    TriggerClientEvent('ox_lib:trailerAttachmentUpdate', -1, data)
-end)
-
-return lib.vehicle
+-- Global instance
+lib.vehicle = vehicle

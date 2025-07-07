@@ -31,6 +31,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
 - `lib.blips` - **NEW!** Enhanced blip management system with object-oriented approach
 - `lib.discord` - **NEW!** Instance-based Discord webhook integration system
+- `lib.dui` - **ENHANCED!** Direct-rendered UI system with mouse interaction and callback support
 - `lib.achievements` - Lazy-loaded achievements system | not tested
 
 ### 🌐 **Framework Wrappers**
@@ -1388,6 +1389,299 @@ lib.npc.onDestroyed(function(npc)
     print('NPC removed:', npc:getId())
 end)
 ```
+
+---
+
+## 🖥️ **ENHANCED: Direct-Rendered UI (DUI) System**
+
+The **Enhanced DUI System** provides a powerful class-based interface for creating interactive Direct-Rendered UI elements with mouse interaction, callback support, and advanced state management.
+
+### **What is DUI?**
+
+DUI (Direct-rendered UI) allows you to render web content (HTML/CSS/JS) directly onto game textures, enabling:
+
+- **In-world screens** (cinema screens, TV displays, billboards)
+- **Interactive surfaces** (ATM interfaces, computer terminals)
+- **Vehicle displays** (dashboard screens, entertainment systems)
+- **Dynamic textures** (real-time updating content)
+
+### **Key Features**
+
+- **🎯 Object-Oriented Design** - Each DUI is a manageable class instance
+- **🖱️ Mouse Interaction** - Full mouse event support (click, move, wheel)
+- **📞 Callback System** - Bidirectional communication between Lua and web content
+- **🎮 Focus Management** - Control which DUI receives input
+- **📐 Dynamic Sizing** - Change dimensions after creation
+- **🔍 State Validation** - Check DUI availability and status
+- **📊 Position Tracking** - Monitor mouse position within DUI
+- **🧹 Automatic Cleanup** - Proper memory management on resource stop
+
+### **Basic Usage**
+
+```lua
+-- Create a DUI instance
+local myDui = lib.dui:new({
+    url = 'https://example.com',
+    width = 1920,
+    height = 1080,
+    debug = true
+})
+
+-- Use the DUI texture in game
+-- The texture can be accessed via myDui.dictName and myDui.txtName
+DrawSprite(myDui.dictName, myDui.txtName, 0.5, 0.5, 1.0, 1.0, 0.0, 255, 255, 255, 255)
+```
+
+### **Mouse Interaction Methods**
+
+```lua
+-- Mouse click events
+myDui:sendMouseDown(x, y, button)  -- button: 0=left, 1=right, 2=middle
+myDui:sendMouseUp(x, y, button)
+
+-- Mouse movement
+myDui:sendMouseMove(x, y)
+
+-- Mouse wheel scrolling
+myDui:sendMouseWheel(x, y, deltaX, deltaY)
+
+-- Get current mouse position
+local mousePos = myDui:getMousePosition()
+print(mousePos.x, mousePos.y)
+```
+
+### **State Management**
+
+```lua
+-- Check if DUI is available
+if myDui:isAvailable() then
+    print("DUI is ready for interaction")
+end
+
+-- Validate DUI state
+if myDui:isValid() then
+    -- Safe to use DUI
+end
+
+-- Focus management
+myDui:setFocus(true)   -- Give focus to this DUI
+local hasFocus = myDui:hasFocus()
+
+-- Get/set dimensions
+local dimensions = myDui:getDimensions()
+myDui:setDimensions(1280, 720)
+```
+
+### **Callback System**
+
+```lua
+-- Register callback handlers
+myDui:onCallback('buttonClick', function(data)
+    print('Button clicked:', data.buttonId)
+end)
+
+myDui:onCallback('formSubmit', function(data)
+    print('Form submitted:', json.encode(data))
+end)
+
+-- Trigger callbacks from web content (JavaScript)
+-- In your HTML/JS: window.postMessage({type: 'buttonClick', buttonId: 'submit'}, '*');
+
+-- Trigger callbacks from Lua
+myDui:triggerCallback('dataUpdate', {
+    playerName = 'John Doe',
+    score = 1500
+})
+```
+
+### **Advanced Example: Interactive ATM**
+
+```lua
+-- Create ATM DUI
+local atmDui = lib.dui:new({
+    url = 'nui://my_banking/atm.html',
+    width = 800,
+    height = 600,
+    debug = false
+})
+
+-- Set up callbacks
+atmDui:onCallback('withdraw', function(data)
+    local amount = tonumber(data.amount)
+    if lib.core:getMoney('bank') >= amount then
+        lib.core:removeMoney('bank', amount)
+        lib.core:addMoney('cash', amount)
+        atmDui:sendMessage({
+            type = 'transaction_success',
+            message = 'Withdrawal successful',
+            newBalance = lib.core:getMoney('bank')
+        })
+    else
+        atmDui:sendMessage({
+            type = 'transaction_error',
+            message = 'Insufficient funds'
+        })
+    end
+end)
+
+-- Handle mouse interactions
+CreateThread(function()
+    while atmDui:isValid() do
+        local hit, coords, entity = lib.raycast.cam(511, 10.0)
+
+        if hit and entity == atmEntity then
+            -- Convert world coordinates to DUI coordinates
+            local x, y = convertWorldToDuiCoords(coords)
+
+            -- Send mouse position
+            atmDui:sendMouseMove(x, y)
+
+            -- Handle clicks
+            if IsControlJustPressed(0, 24) then -- Left click
+                atmDui:sendMouseDown(x, y, 0)
+                atmDui:setFocus(true)
+            end
+
+            if IsControlJustReleased(0, 24) then
+                atmDui:sendMouseUp(x, y, 0)
+            end
+        else
+            atmDui:setFocus(false)
+        end
+
+        Wait(0)
+    end
+end)
+
+-- Clean up when done
+RegisterCommand('close_atm', function()
+    atmDui:remove()
+end)
+```
+
+### **Available Methods**
+
+**Creation & Basic Operations:**
+
+- `:new(properties)` - Create new DUI instance
+- `:remove()` - Destroy DUI and clean up
+- `:setUrl(url)` - Change DUI URL
+- `:sendMessage(message)` - Send data to web content
+
+**Mouse Interaction:**
+
+- `:sendMouseDown(x, y, button)` - Send mouse down event
+- `:sendMouseUp(x, y, button)` - Send mouse up event
+- `:sendMouseMove(x, y)` - Send mouse movement
+- `:sendMouseWheel(x, y, deltaX, deltaY)` - Send scroll wheel event
+- `:getMousePosition()` - Get current mouse position
+
+**State Management:**
+
+- `:isAvailable()` - Check if DUI is available
+- `:isValid()` - Validate DUI state
+- `:getDimensions()` - Get current width/height
+- `:setDimensions(width, height)` - Change DUI size
+- `:setFocus(hasFocus)` - Set focus state
+- `:hasFocus()` - Check focus state
+
+**Callback System:**
+
+- `:onCallback(eventName, callback)` - Register callback handler
+- `:triggerCallback(eventName, data)` - Trigger callback
+
+**Texture Replacement:**
+
+- `:replaceTexture(origTxd, origTxn)` - Replace game texture with DUI content
+- `:removeTextureReplacement(origTxd, origTxn)` - Remove specific texture replacement
+- `:removeAllTextureReplacements()` - Remove all texture replacements
+- `:getReplacedTextures()` - Get list of all replaced textures
+
+### **Texture Replacement Examples**
+
+```lua
+-- Replace TV screens in a building
+local tvDui = lib.dui:new({
+    url = 'nui://my_tv_app/news.html',
+    width = 1920,
+    height = 1080
+})
+
+-- Replace specific TV textures
+tvDui:replaceTexture('prop_tv_flat_01', 'script_rt_tvscreen')  -- Living room TV
+tvDui:replaceTexture('prop_tv_flat_michael', 'script_rt_tvscreen')  -- Bedroom TV
+
+-- Replace billboard textures
+local billboardDui = lib.dui:new({
+    url = 'https://my-ads-server.com/billboard',
+    width = 1024,
+    height = 512
+})
+
+billboardDui:replaceTexture('prop_billboard_01', 'billboard_texture')
+
+-- Check what textures are replaced
+local replacedTextures = tvDui:getReplacedTextures()
+for i, texture in ipairs(replacedTextures) do
+    print(('Replaced: %s:%s'):format(texture.txd, texture.txn))
+end
+
+-- Remove specific replacement
+tvDui:removeTextureReplacement('prop_tv_flat_01', 'script_rt_tvscreen')
+
+-- Clean up all replacements
+tvDui:removeAllTextureReplacements()
+```
+
+### **Advanced Example: Dynamic Cinema Screen**
+
+```lua
+-- Create cinema screen DUI
+local cinemaDui = lib.dui:new({
+    url = 'nui://cinema_app/player.html',
+    width = 1920,
+    height = 1080,
+    debug = true
+})
+
+-- Replace cinema screen texture
+cinemaDui:replaceTexture('prop_cinema_screen', 'cinema_texture')
+
+-- Set up movie controls
+cinemaDui:onCallback('play_movie', function(data)
+    -- Handle movie playback
+    cinemaDui:sendMessage({
+        type = 'load_video',
+        url = data.movieUrl,
+        title = data.movieTitle
+    })
+end)
+
+cinemaDui:onCallback('pause_movie', function()
+    -- Handle pause
+    cinemaDui:sendMessage({ type = 'pause_video' })
+end)
+
+-- Cinema ticket booth interaction
+RegisterNetEvent('cinema:buy_ticket')
+AddEventHandler('cinema:buy_ticket', function(movieId)
+    local movieUrl = GetMovieUrl(movieId)
+    cinemaDui:triggerCallback('play_movie', {
+        movieUrl = movieUrl,
+        movieTitle = GetMovieTitle(movieId)
+    })
+end)
+```
+
+### **Properties**
+
+Each DUI instance provides access to:
+
+- `url` - Current DUI URL
+- `width` / `height` - Current dimensions
+- `duiObject` - Native DUI handle
+- `duiHandle` - DUI texture handle
+- `dictName` / `txtName` - Texture dictionary and name for rendering
 
 ---
 

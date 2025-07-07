@@ -249,7 +249,7 @@ function tickets.createPlayerReport(playerId, title, description, category, targ
     end
 
     local reporterName = GetPlayerName(playerId)
-    local reporterCoords = GetEntityCoords(GetPlayerPed(playerId))
+    local reporterCoords = vector3(0.0, 0.0, 0.0) -- Default coords since GetPlayerPed is unreliable on server
 
     local targetInfo = {}
     if targetId and GetPlayerName(targetId) then
@@ -335,7 +335,7 @@ function tickets.createStaffTicket(staffId, title, description, category, priori
 
     local staffLicense = getPlayerLicense(staffId)
     local staffName = GetPlayerName(staffId)
-    local staffCoords = GetEntityCoords(GetPlayerPed(staffId))
+    local staffCoords = vector3(0.0, 0.0, 0.0) -- Default coords since GetPlayerPed is unreliable on server
 
     local targetInfo = {}
     if targetId and GetPlayerName(targetId) then
@@ -566,8 +566,16 @@ local staffActions = {
         local ticket = activeTickets[ticketId] or tickets.getTicket(ticketId)
         if not ticket or not ticket.reporter_id then return false end
 
-        local targetPed = GetPlayerPed(ticket.reporter_id)
-        if targetPed == 0 then
+        -- Check if player is online using server-side method
+        local isOnline = false
+        for _, playerId in ipairs(GetPlayers()) do
+            if tonumber(playerId) == ticket.reporter_id then
+                isOnline = true
+                break
+            end
+        end
+
+        if not isOnline then
             TriggerClientEvent('ox_lib:notify', staffId, {
                 type = 'error',
                 description = 'Player is not online'
@@ -575,17 +583,9 @@ local staffActions = {
             return false
         end
 
-        local targetCoords = GetEntityCoords(targetPed)
-        if not targetCoords or targetCoords.x == 0 then
-            TriggerClientEvent('ox_lib:notify', staffId, {
-                type = 'error',
-                description = 'Invalid player coordinates'
-            })
-            return false
-        end
-
-        TriggerClientEvent('tickets:teleportTo', staffId, targetCoords)
-        tickets.addMessage(ticketId, staffId, 'Staff teleported to player', true, true)
+        -- Request coordinates from client since server can't reliably get them
+        TriggerClientEvent('tickets:requestTeleportToPlayer', staffId, ticket.reporter_id)
+        tickets.addMessage(ticketId, staffId, 'Staff teleport to player requested', true, true)
         return true
     end,
 
@@ -597,7 +597,16 @@ local staffActions = {
         local ticket = activeTickets[ticketId] or tickets.getTicket(ticketId)
         if not ticket or not ticket.reporter_id then return false end
 
-        if GetPlayerPed(ticket.reporter_id) == 0 then
+        -- Check if player is online using server-side method
+        local isOnline = false
+        for _, playerId in ipairs(GetPlayers()) do
+            if tonumber(playerId) == ticket.reporter_id then
+                isOnline = true
+                break
+            end
+        end
+
+        if not isOnline then
             TriggerClientEvent('ox_lib:notify', staffId, {
                 type = 'error',
                 description = 'Player is not online'
@@ -605,24 +614,14 @@ local staffActions = {
             return false
         end
 
-        local staffPed = GetPlayerPed(staffId)
-        local staffCoords = GetEntityCoords(staffPed)
-
-        if not staffCoords or staffCoords.x == 0 then
-            TriggerClientEvent('ox_lib:notify', staffId, {
-                type = 'error',
-                description = 'Invalid staff coordinates'
-            })
-            return false
-        end
-
-        TriggerClientEvent('tickets:teleportTo', ticket.reporter_id, staffCoords)
+        -- Request staff coordinates and teleport player to staff
+        TriggerClientEvent('tickets:requestBringPlayer', staffId, ticket.reporter_id)
         TriggerClientEvent('ox_lib:notify', ticket.reporter_id, {
             type = 'info',
             description = 'You have been teleported by staff'
         })
 
-        tickets.addMessage(ticketId, staffId, 'Player teleported to staff', true, true)
+        tickets.addMessage(ticketId, staffId, 'Player teleport to staff requested', true, true)
         return true
     end,
 
@@ -636,7 +635,16 @@ local staffActions = {
         local ticket = activeTickets[ticketId] or tickets.getTicket(ticketId)
         if not ticket or not ticket.reporter_id then return false end
 
-        if GetPlayerPed(ticket.reporter_id) == 0 then
+        -- Check if player is online using server-side method
+        local isOnline = false
+        for _, playerId in ipairs(GetPlayers()) do
+            if tonumber(playerId) == ticket.reporter_id then
+                isOnline = true
+                break
+            end
+        end
+
+        if not isOnline then
             TriggerClientEvent('ox_lib:notify', staffId, {
                 type = 'error',
                 description = 'Player is not online'
@@ -662,7 +670,16 @@ local staffActions = {
         local ticket = activeTickets[ticketId] or tickets.getTicket(ticketId)
         if not ticket or not ticket.reporter_id then return false end
 
-        if GetPlayerPed(ticket.reporter_id) == 0 then
+        -- Check if player is online using server-side method
+        local isOnline = false
+        for _, playerId in ipairs(GetPlayers()) do
+            if tonumber(playerId) == ticket.reporter_id then
+                isOnline = true
+                break
+            end
+        end
+
+        if not isOnline then
             TriggerClientEvent('ox_lib:notify', staffId, {
                 type = 'error',
                 description = 'Player is not online'
@@ -688,7 +705,16 @@ local staffActions = {
         local ticket = activeTickets[ticketId] or tickets.getTicket(ticketId)
         if not ticket or not ticket.reporter_id then return false end
 
-        if GetPlayerPed(ticket.reporter_id) == 0 then
+        -- Check if player is online using server-side method
+        local isOnline = false
+        for _, playerId in ipairs(GetPlayers()) do
+            if tonumber(playerId) == ticket.reporter_id then
+                isOnline = true
+                break
+            end
+        end
+
+        if not isOnline then
             TriggerClientEvent('ox_lib:notify', staffId, {
                 type = 'error',
                 description = 'Player is not online'
