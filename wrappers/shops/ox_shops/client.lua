@@ -1,4 +1,4 @@
-local Shops = lib.class('shops')
+--[[ local Shops = lib.class('shops')
 local Normalizer = require 'wrappers.normalizer'
 
 function Shops:constructor()
@@ -315,3 +315,4 @@ Normalizer.shops.triggerShopHook  = function(...) return Shops:triggerShopHook(.
 Normalizer.capabilities.shops     = true
 
 return Shops
+ ]]
