@@ -1,4 +1,3 @@
-
 ---@meta
 
 ---@class VehicleCreateOptions
@@ -97,6 +96,14 @@ function lib.vehicle.create(model, coords, heading, options)
 
     local modelHash = type(model) == 'string' and joaat(model) or model
 
+    -- Trigger hook before creating vehicle
+    if lib.hooks and lib.hooks.trigger then
+        local allowed = lib.hooks.trigger('vehicle:before_create', model, vehicleCoords, heading, options)
+        if not allowed then
+            return nil
+        end
+    end
+
     local vehicleType = options.type or 'automobile'
 
     local vehicle = CreateVehicleServerSetter(modelHash, vehicleType, vehicleCoords.x, vehicleCoords.y, vehicleCoords.z, heading)
@@ -113,6 +120,11 @@ function lib.vehicle.create(model, coords, heading, options)
 
     if options.properties then
         lib.setVehicleProperties(vehicle, options.properties)
+    end
+
+    -- Trigger hook after creating vehicle
+    if lib.hooks and lib.hooks.trigger then
+        lib.hooks.trigger('vehicle:after_create', vehicleInstance, model, vehicleCoords, heading, options)
     end
 
     return vehicleInstance
@@ -268,10 +280,20 @@ end
 function lib.vehicle:repair()
     if not self:isValid() then return false end
 
+    -- Trigger hook before repairing vehicle
+    if lib.hooks and lib.hooks.trigger then
+        local allowed = lib.hooks.trigger('vehicle:before_repair', self.vehicle, self)
+        if not allowed then
+            return false
+        end
+    end
+
     SetVehicleFixed(self.vehicle)
     SetVehicleDeformationFixed(self.vehicle)
     SetVehicleUndriveable(self.vehicle, false)
     SetVehicleEngineOn(self.vehicle, true, true, true)
+
+ 
 
     return true
 end
@@ -279,10 +301,21 @@ end
 function lib.vehicle:explode(damageSource, hasEntityDamage)
     if not self:isValid() then return false end
 
+    -- Trigger hook before exploding vehicle
+    if lib.hooks and lib.hooks.trigger then
+        local allowed = lib.hooks.trigger('vehicle:before_explode', self.vehicle, self, damageSource, hasEntityDamage)
+        if not allowed then
+            return false
+        end
+    end
+
     damageSource = damageSource or 0
     hasEntityDamage = hasEntityDamage ~= false
 
     ExplodeVehicle(self.vehicle, hasEntityDamage, false)
+
+ 
+
     return true
 end
 
@@ -355,9 +388,17 @@ function lib.vehicle:setPlayerIntoVehicle(source, seat)
 
     seat = seat or -1
 
+ 
+
     local ped = GetPlayerPed(source)
     if ped and ped ~= 0 then
         SetPedIntoVehicle(ped, self.vehicle, seat)
+
+        -- Trigger hook after setting player into vehicle
+        if lib.hooks and lib.hooks.trigger then
+            lib.hooks.trigger('vehicle:after_set_player', self.vehicle, self, source, seat, ped)
+        end
+
         return true
     end
 
@@ -450,12 +491,25 @@ end
 function lib.vehicle:delete()
     if not self:isValid() then return false end
 
+    -- Trigger hook before deleting vehicle
+    if lib.hooks and lib.hooks.trigger then
+        local allowed = lib.hooks.trigger('vehicle:before_delete', self.vehicle, self)
+        if not allowed then
+            return false
+        end
+    end
+
     local vehicleEntity = self.vehicle
     DeleteEntity(vehicleEntity)
 
     local success = not DoesEntityExist(vehicleEntity)
 
     if success then
+        -- Trigger hook after deleting vehicle
+        if lib.hooks and lib.hooks.trigger then
+            lib.hooks.trigger('vehicle:after_delete', vehicleEntity, self)
+        end
+
         self.vehicle = nil
     end
 
@@ -559,16 +613,16 @@ end
 function lib.vehicle.hasAccess(playerId, networkId)
     local vehicle = NetworkGetEntityFromNetworkId(networkId)
     if not DoesEntityExist(vehicle) then return false end
-    
+
     local playerPed = GetPlayerPed(playerId)
     local playerCoords = GetEntityCoords(playerPed)
     local vehicleCoords = GetEntityCoords(vehicle)
-    
+
     if #(playerCoords - vehicleCoords) > 10.0 then return false end
-    
+
     local driver = GetPedInVehicleSeat(vehicle, -1)
     if driver == playerPed then return true end
-    
+
     return true
 end
 
@@ -576,9 +630,9 @@ end
 RegisterNetEvent('ox_lib:vehiclePropertiesChanged', function(networkId, properties)
     local source = source
     local vehicle = NetworkGetEntityFromNetworkId(networkId)
-    
+
     if not DoesEntityExist(vehicle) then return end
-    
+
     if not lib.vehicle.hasAccess(source, networkId) then
         print(('Player %s attempted to modify vehicle %s without permission'):format(source, networkId))
         return
@@ -588,11 +642,11 @@ end)
 ---Handle trailer attachment sync
 RegisterNetEvent('ox_lib:syncTrailerAttachment', function(data)
     local source = source
-    
+
     if not lib.vehicle.hasAccess(source, data.towVehicle) then
         return
     end
-    
+
     TriggerClientEvent('ox_lib:trailerAttachmentUpdate', -1, data)
 end)
 

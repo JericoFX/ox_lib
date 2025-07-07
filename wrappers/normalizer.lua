@@ -110,6 +110,39 @@ end
 ---@field open fun():boolean
 ---@field close fun():boolean
 ---@field isOpen fun():boolean
+---@field makeCall fun(number:string|number):boolean
+---@field answerCall fun():boolean
+---@field declineCall fun():boolean
+---@field endCall fun():boolean
+---@field isInCall fun():boolean
+---@field takePhoto fun():boolean
+---@field openGallery fun():boolean
+---@field openApp fun(appName:string):boolean
+---@field closeApp fun(appName:string):boolean
+---@field getPhoneNumber fun():string?
+---@field getContacts fun():table?
+---@field updateContact fun(id:any, data:table):boolean
+---@field deletePhoto fun(photoId:any):boolean
+---@field sharePhoto fun(photoId:any, contacts:table):boolean
+---@field installApp fun(appId:string):boolean
+---@field uninstallApp fun(appId:string):boolean
+---@field getInstalledApps fun():table
+
+---@class Normalizer_Shops
+---@field createShop fun(shopData:table):boolean
+---@field openShop fun(shopName:string, playerSource?:number):boolean
+---@field addShopItem fun(shopName:string, itemData:table):boolean
+---@field removeShopItem fun(shopName:string, itemName:string, amount?:number):boolean
+---@field updateShopItem fun(shopName:string, itemName:string, updateData:table):boolean
+---@field getShop fun(shopName:string):table?
+---@field deleteShop fun(shopName:string):boolean
+---@field getAllShops fun():table
+---@field buyItem fun(shopName:string, itemName:string, amount?:number):boolean
+---@field shopExists fun(shopName:string):boolean
+---@field createQuickShop fun(name:string, label:string, coords:vector3, items?:table):boolean
+---@field getShopItems fun(shopName:string):table
+---@field clearShop fun(shopName:string):boolean
+---@field populateShop fun(shopName:string, items:table):boolean
 
 ---@class Normalizer_Garage
 ---@field openMenu fun(data:table):boolean
@@ -140,6 +173,7 @@ end
 ---@field targeting Normalizer_Targeting
 ---@field housing Normalizer_Housing
 ---@field phone Normalizer_Phone
+---@field shops Normalizer_Shops
 ---@field garage Normalizer_Garage
 ---@field clothing Normalizer_Clothing
 local M = {
@@ -151,6 +185,7 @@ local M = {
         garage    = false,
         housing   = false,
         phone     = false,
+        shops     = false,
         targeting = false,
         voice     = false,
         banking   = false,
@@ -201,32 +236,65 @@ local M = {
         storeVehicle = _stub('garage', 'storeVehicle'),
     },
     housing      = {
-        enterHouse          = _stub('housing', 'enterHouse'),
-        exitHouse           = _stub('housing', 'exitHouse'),
-        createHouse         = _stub('housing', 'createHouse'),
-        buyHouse            = _stub('housing', 'buyHouse'),
-        getPlayerHouses     = _stub('housing', 'getPlayerHouses'),
-        isPlayerInsideHouse = _stub('housing', 'isPlayerInsideHouse'),
-        getHouseInfo        = _stub('housing', 'getHouseInfo'),
+        enterHouse           = _stub('housing', 'enterHouse'),
+        exitHouse            = _stub('housing', 'exitHouse'),
+        createHouse          = _stub('housing', 'createHouse'),
+        buyHouse             = _stub('housing', 'buyHouse'),
+        getPlayerHouses      = _stub('housing', 'getPlayerHouses'),
+        isPlayerInsideHouse  = _stub('housing', 'isPlayerInsideHouse'),
+        getHouseInfo         = _stub('housing', 'getHouseInfo'),
     },
     phone        = {
-        sendMessage   = _stub('phone', 'sendMessage'),
-        addContact    = _stub('phone', 'addContact'),
-        removeContact = _stub('phone', 'removeContact'),
-        notification  = _stub('phone', 'notification'),
-        open          = _stub('phone', 'open'),
-        close         = _stub('phone', 'close'),
-        isOpen        = _stub('phone', 'isOpen'),
+        sendMessage      = _stub('phone', 'sendMessage'),
+        addContact       = _stub('phone', 'addContact'),
+        removeContact    = _stub('phone', 'removeContact'),
+        notification     = _stub('phone', 'notification'),
+        open             = _stub('phone', 'open'),
+        close            = _stub('phone', 'close'),
+        isOpen           = _stub('phone', 'isOpen'),
+        makeCall         = _stub('phone', 'makeCall'),
+        answerCall       = _stub('phone', 'answerCall'),
+        declineCall      = _stub('phone', 'declineCall'),
+        endCall          = _stub('phone', 'endCall'),
+        isInCall         = _stub('phone', 'isInCall'),
+        takePhoto        = _stub('phone', 'takePhoto'),
+        openGallery      = _stub('phone', 'openGallery'),
+        openApp          = _stub('phone', 'openApp'),
+        closeApp         = _stub('phone', 'closeApp'),
+        getPhoneNumber   = _stub('phone', 'getPhoneNumber'),
+        getContacts      = _stub('phone', 'getContacts'),
+        updateContact    = _stub('phone', 'updateContact'),
+        deletePhoto      = _stub('phone', 'deletePhoto'),
+        sharePhoto       = _stub('phone', 'sharePhoto'),
+        installApp       = _stub('phone', 'installApp'),
+        uninstallApp     = _stub('phone', 'uninstallApp'),
+        getInstalledApps = _stub('phone', 'getInstalledApps'),
+    },
+    shops        = {
+        createShop      = _stub('shops', 'createShop'),
+        openShop        = _stub('shops', 'openShop'),
+        addShopItem     = _stub('shops', 'addShopItem'),
+        removeShopItem  = _stub('shops', 'removeShopItem'),
+        updateShopItem  = _stub('shops', 'updateShopItem'),
+        getShop         = _stub('shops', 'getShop'),
+        deleteShop      = _stub('shops', 'deleteShop'),
+        getAllShops     = _stub('shops', 'getAllShops'),
+        buyItem         = _stub('shops', 'buyItem'),
+        shopExists      = _stub('shops', 'shopExists'),
+        createQuickShop = _stub('shops', 'createQuickShop'),
+        getShopItems    = _stub('shops', 'getShopItems'),
+        clearShop       = _stub('shops', 'clearShop'),
+        populateShop    = _stub('shops', 'populateShop'),
     },
     clothing     = {
-        openClothing      = _stub('clothing', 'openClothing'),
-        openOutfits       = _stub('clothing', 'openOutfits'),
-        saveOutfit        = _stub('clothing', 'saveOutfit'),
-        loadOutfit        = _stub('clothing', 'loadOutfit'),
-        getPlayerClothing = _stub('clothing', 'getPlayerClothing'),
-        setPlayerClothing = _stub('clothing', 'setPlayerClothing'),
-        openShop          = _stub('clothing', 'openShop'),
-        openPedMenu       = _stub('clothing', 'openPedMenu'),
+        openClothing       = _stub('clothing', 'openClothing'),
+        openOutfits        = _stub('clothing', 'openOutfits'),
+        saveOutfit         = _stub('clothing', 'saveOutfit'),
+        loadOutfit         = _stub('clothing', 'loadOutfit'),
+        getPlayerClothing  = _stub('clothing', 'getPlayerClothing'),
+        setPlayerClothing  = _stub('clothing', 'setPlayerClothing'),
+        openShop           = _stub('clothing', 'openShop'),
+        openPedMenu        = _stub('clothing', 'openPedMenu'),
     },
 }
 

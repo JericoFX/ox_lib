@@ -27,6 +27,7 @@ This is an **experimental extension** of the original ox_lib that adds:
 - `lib.vehicle` - Vehicle manipulation tools
 - `lib.enums` - **NEW!** Comprehensive shared enumerations and constants
 - `lib.events` - **NEW!** Universal event system with automatic caching
+- `lib.hooks` - **NEW!** Server-side secure hook system for intercepting operations
 - `lib.npc` - **NEW!** Advanced NPC system with intelligent AI and behaviors
 - `lib.blips` - **NEW!** Enhanced blip management system with object-oriented approach
 - `lib.discord` - **NEW!** Instance-based Discord webhook integration system
@@ -35,13 +36,14 @@ This is an **experimental extension** of the original ox_lib that adds:
 ### 🌐 **Framework Wrappers**
 
 - `lib.core` - Universal framework wrapper (ESX/QBCore/ox_core)
-- `lib.inventory` - Universal inventory wrapper (ox_inventory/qb-inventory/qs-inventory)
+- `lib.inventory` - **ENHANCED!** Universal inventory wrapper with ox_inventory hooks support (ox_inventory/qb-inventory/qs-inventory)
 - `lib.dispatch` - Universal dispatch wrapper (cd_dispatch/ps-dispatch/qs-dispatch/origen_police/rcore_dispatch)
 - `lib.fuel` - Universal fuel wrapper (cdn-fuel/ox_fuel/ps-fuel/LegacyFuel/lc_fuel/lj-fuel)
 - `lib.phone` - Universal phone wrapper (qb-phone/qs-smartphone/lb-phone/renewed-phone/high_phone)
 - `lib.banking` - Universal banking wrapper (okokBanking/qb-banking/etc)
 - `lib.clothing` - **NEW!** Universal clothing wrapper (illenium-appearance/qb-clothing/fivem-appearance/bostra_appearance/esx_skin/clothing)
 - `lib.tickets` - **NEW!** Advanced ticket system with player reporting and staff management
+- `lib.shops` - **NEW!** Universal shop wrapper with ox_inventory hooks integration
 
 ### 🆕 **Unified Core API Aliases**
 
@@ -288,6 +290,397 @@ AddEventHandler('banking:checkBalance', function(account)
     TriggerClientEvent('banking:balanceResponse', source, balance, account)
 end)
 ```
+
+---
+
+## 🪝 **NEW: Server-Side Hooks System**
+
+The **Server-Side Hooks System** provides secure middleware-style event hooks that allow intercepting and controlling server operations before they execute. This system is server-only for security reasons and provides a clean way to add custom logic to existing operations.
+
+### **Key Features**
+
+- **🔒 Server-Only Security** - Hooks execute only on server to prevent client manipulation
+- **⚡ Priority System** - Control execution order with priority values (higher runs first)
+- **🛑 Prevention Control** - Return false to prevent action from proceeding
+- **🔧 Error Handling** - Built-in pcall protection with error logging
+- **🧹 Hook Management** - Register, remove, and clear hooks dynamically
+- **🔍 Debug Support** - List registered hooks for debugging
+- **📦 Custom Handlers** - Advanced hook handling with custom result processing
+
+### **Basic Usage**
+
+```lua
+-- Register a hook to intercept player money additions
+lib.hooks.register('player:before_add_money', function(source, amount, account)
+    local player = lib.core.player(source)
+
+    -- Log the transaction
+    print(('Player %s is receiving $%d in %s'):format(player.name, amount, account))
+
+    -- Prevent if amount is too large (example business logic)
+    if amount > 100000 then
+        lib.core.notify(source, 'Amount too large!', 'error')
+        return false -- Prevents the money addition
+    end
+
+    -- Allow transaction to proceed
+    return true
+end, 10) -- Priority 10 (higher priority)
+
+-- Hook that runs after the first one (lower priority)
+lib.hooks.register('player:before_add_money', function(source, amount, account)
+    -- Anti-duplication check
+    if IsPlayerCheating(source) then
+        return false -- Prevent money addition
+    end
+end, 5) -- Priority 5 (lower priority, runs after priority 10)
+```
+
+### **Available Methods**
+
+**Core Methods:**
+
+- `lib.hooks.register(name, callback, priority?)` - Register a hook callback
+- `lib.hooks.trigger(name, ...)` - Trigger a hook chain, returns boolean (allowed/prevented)
+- `lib.hooks.remove(name, callback)` - Remove specific hook callback
+- `lib.hooks.clear(name)` - Remove all hooks for a specific name
+- `lib.hooks.exists(name)` - Check if hook has registered callbacks
+
+**Management Methods:**
+
+- `lib.hooks.getRegistered(name?)` - Get registered hooks (debugging)
+- `lib.hooks.triggerWithHandler(name, handler, ...)` - Advanced hook execution with custom result handling
+
+### **Common Hook Names**
+
+While you can create any hook names, here are some common patterns:
+
+**Player Operations:**
+
+- `player:before_add_money` - Before adding money to player
+- `player:before_remove_money` - Before removing money from player
+- `player:before_give_item` - Before giving item to player
+- `player:before_remove_item` - Before removing item from player
+- `player:before_set_job` - Before changing player job
+
+**Vehicle Operations:**
+
+- `vehicle:before_spawn` - Before spawning a vehicle
+- `vehicle:before_delete` - Before deleting a vehicle
+- `vehicle:before_modify` - Before modifying vehicle properties
+
+**Inventory Operations:**
+
+- `inventory:before_add_item` - Before adding item to inventory
+- `inventory:before_remove_item` - Before removing item from inventory
+- `inventory:before_use_item` - Before using an item
+
+### **Advanced Usage**
+
+```lua
+-- Complex hook with multiple conditions
+lib.hooks.register('shop:before_purchase', function(source, shopId, item, quantity, price)
+    local player = lib.core.player(source)
+
+    -- Multiple validation checks
+    if not player then return false end
+
+    -- Check if player has enough money
+    if lib.core.wallet(source, 'bank') < price then
+        lib.core.notify(source, 'Insufficient funds', 'error')
+        return false
+    end
+
+    -- Check if item is restricted
+    if IsRestrictedItem(item) and not HasPermission(source, 'restricted_items') then
+        lib.core.notify(source, 'No permission for this item', 'error')
+        return false
+    end
+
+    -- Log the purchase attempt
+    lib.discord:sendPlayerLog(source, 'Shop Purchase Attempt',
+        ('Item: %s, Quantity: %d, Price: $%d'):format(item, quantity, price))
+
+    return true -- Allow purchase
+end)
+
+-- Hook with custom result handling
+local function collectResults(...)
+    local results = {...}
+    local denied = false
+    local reasons = {}
+
+    for i, result in ipairs(results) do
+        if type(result) == 'table' and result.denied then
+            denied = true
+            reasons[#reasons + 1] = result.reason
+        elseif result == false then
+            denied = true
+        end
+    end
+
+    return {
+        allowed = not denied,
+        reasons = reasons
+    }
+end
+
+lib.hooks.triggerWithHandler('complex:validation', collectResults, source, data)
+```
+
+### **Integration Example**
+
+```lua
+-- In your inventory wrapper or core system
+function GivePlayerItem(source, item, count)
+    -- Trigger hook before giving item
+    local allowed = lib.hooks.trigger('player:before_give_item', source, item, count)
+
+    if not allowed then
+        -- Hook prevented the action
+        return false
+    end
+
+    -- Proceed with original logic
+    local success = OriginalGiveItemFunction(source, item, count)
+
+    if success then
+        -- Trigger after hook (informational)
+        lib.hooks.trigger('player:after_give_item', source, item, count)
+    end
+
+    return success
+end
+```
+
+### **Hook Management**
+
+```lua
+-- Check what hooks are registered
+local playerHooks = lib.hooks.getRegistered('player:before_add_money')
+print(('Found %d hooks for player money additions'):format(#playerHooks))
+
+-- List all registered hooks
+local allHooks = lib.hooks.getRegistered()
+for hookName, count in pairs(allHooks) do
+    print(('Hook "%s" has %d callbacks'):format(hookName, count))
+end
+
+-- Remove specific hook
+local function myMoneyHook(source, amount)
+    -- Some logic
+end
+
+lib.hooks.register('player:before_add_money', myMoneyHook)
+-- Later...
+lib.hooks.remove('player:before_add_money', myMoneyHook)
+
+-- Clear all hooks for a specific event
+lib.hooks.clear('player:before_add_money')
+```
+
+### **Complete Example: Vehicle Module with Hooks**
+
+Here's a complete example showing how to register hooks and use them with the vehicle module:
+
+```lua
+-- ================================================================================================
+-- STEP 1: REGISTER HOOKS (This runs when your resource starts)
+-- ================================================================================================
+
+-- Register hook to control vehicle creation
+lib.hooks.register('vehicle:before_create', function(model, coords, heading, options)
+    print('[Hook] Attempting to create vehicle:', model)
+
+    -- Prevent restricted vehicles
+    local restrictedVehicles = { 'rhino', 'lazer', 'hydra' }
+    local modelName = type(model) == 'string' and model:lower() or GetDisplayNameFromVehicleModel(model):lower()
+
+    for _, restricted in ipairs(restrictedVehicles) do
+        if modelName == restricted then
+            print('[Hook] Blocked restricted vehicle:', modelName)
+            return false -- This prevents the vehicle creation
+        end
+    end
+
+    return true -- Allow creation
+end, 10) -- Priority 10 (higher = runs first)
+
+-- Register hook to log vehicle repairs
+lib.hooks.register('vehicle:before_repair', function(vehicleEntity, vehicleInstance)
+    print('[Hook] Vehicle repair requested for:', vehicleEntity)
+
+    -- Check if player has mechanic job
+    local vehicleCoords = GetEntityCoords(vehicleEntity)
+    for _, playerId in ipairs(GetPlayers()) do
+        local playerPed = GetPlayerPed(playerId)
+        local playerCoords = GetEntityCoords(playerPed)
+
+        if #(vehicleCoords - playerCoords) < 5.0 then
+            local player = lib.core.player(playerId)
+            if player and player.job == 'mechanic' then
+                return true -- Allow repair
+            end
+        end
+    end
+
+    print('[Hook] No mechanic nearby, blocking repair')
+    return false -- Prevent repair
+end)
+
+-- Register hook to control player vehicle entry
+lib.hooks.register('vehicle:before_set_player', function(vehicleEntity, vehicleInstance, playerId, seat)
+    local player = lib.core.player(playerId)
+    if not player then return false end
+
+    -- Check job restrictions
+    local model = GetEntityModel(vehicleEntity)
+    local modelName = GetDisplayNameFromVehicleModel(model)
+
+    if modelName == 'POLICE' and player.job ~= 'police' then
+        lib.core.notify(playerId, 'You need to be a police officer!', 'error')
+        return false -- Prevent entry
+    end
+
+    return true -- Allow entry
+end)
+
+-- ================================================================================================
+-- STEP 2: USE THE MODULE (The hooks will automatically trigger)
+-- ================================================================================================
+
+-- Example command that uses the vehicle module
+RegisterCommand('spawncar', function(source, args)
+    local model = args[1] or 'adder'
+    local playerPed = GetPlayerPed(source)
+    local coords = GetEntityCoords(playerPed)
+
+    -- When this runs, it will trigger 'vehicle:before_create' hook
+    local vehicle = lib.vehicle.create(model, coords, 0.0)
+
+    if vehicle then
+        print('Vehicle created successfully:', vehicle.vehicle)
+        lib.core.notify(source, 'Vehicle spawned!', 'success')
+
+        -- Set player into the vehicle (triggers 'vehicle:before_set_player' hook)
+        vehicle:setPlayerIntoVehicle(source, -1) -- Driver seat
+    else
+        lib.core.notify(source, 'Vehicle creation was blocked by hooks!', 'error')
+    end
+end)
+
+-- Example repair command
+RegisterCommand('repaircar', function(source)
+    local vehicle = lib.vehicle.getPlayerVehicle(source)
+
+    if vehicle then
+        -- This will trigger 'vehicle:before_repair' hook
+        local success = vehicle:repair()
+
+        if success then
+            lib.core.notify(source, 'Vehicle repaired!', 'success')
+        else
+            lib.core.notify(source, 'Repair blocked - no mechanic nearby!', 'error')
+        end
+    else
+        lib.core.notify(source, 'You must be in a vehicle!', 'error')
+    end
+end)
+
+-- ================================================================================================
+-- STEP 3: HOOK RESULTS FLOW
+-- ================================================================================================
+
+--[[
+Flow when player runs /spawncar rhino:
+
+1. lib.vehicle.create() is called
+2. Hook 'vehicle:before_create' triggers with parameters (model='rhino', coords, heading, options)
+3. Hook function checks if 'rhino' is in restrictedVehicles list
+4. Hook returns false (blocked)
+5. lib.vehicle.create() receives false from hook and returns nil
+6. Player gets "Vehicle creation was blocked by hooks!" message
+
+Flow when mechanic runs /repaircar:
+
+1. vehicle:repair() is called
+2. Hook 'vehicle:before_repair' triggers
+3. Hook finds nearby mechanic player
+4. Hook returns true (allowed)
+5. Vehicle repair proceeds normally
+6. Player gets "Vehicle repaired!" message
+]]
+
+-- ================================================================================================
+-- STEP 4: ADVANCED HOOK EXAMPLE
+-- ================================================================================================
+
+-- Complex hook with multiple validations
+lib.hooks.register('vehicle:before_create', function(model, coords, heading, options)
+    local validations = {}
+
+    -- Check coordinates
+    if coords.z < -50 then
+        validations[#validations + 1] = 'Cannot spawn underwater'
+    end
+
+    -- Check altitude
+    if coords.z > 500 then
+        validations[#validations + 1] = 'Cannot spawn at high altitude'
+    end
+
+    -- Check if model exists
+    if not IsModelValid(model) then
+        validations[#validations + 1] = 'Invalid vehicle model'
+    end
+
+    if #validations > 0 then
+        print('[Hook] Vehicle creation blocked:', table.concat(validations, ', '))
+        return false
+    end
+
+    return true
+end, 5) -- Lower priority, runs after the first hook
+
+-- ================================================================================================
+-- STEP 5: HOOK MANAGEMENT COMMANDS
+-- ================================================================================================
+
+-- Admin command to list all registered hooks
+RegisterCommand('listhooks', function(source)
+    if not IsPlayerAceAllowed(source, 'admin') then return end
+
+    local allHooks = lib.hooks.getRegistered()
+    print('=== REGISTERED HOOKS ===')
+    for hookName, count in pairs(allHooks) do
+        print(('Hook: %s - Callbacks: %d'):format(hookName, count))
+    end
+end)
+
+-- Admin command to clear specific hooks
+RegisterCommand('clearhook', function(source, args)
+    if not IsPlayerAceAllowed(source, 'admin') then return end
+
+    local hookName = args[1]
+    if hookName and lib.hooks.exists(hookName) then
+        lib.hooks.clear(hookName)
+        print('Cleared hooks for:', hookName)
+    end
+end)
+```
+
+**Available Vehicle Hooks:**
+
+- `vehicle:before_create` - Before vehicle creation
+- `vehicle:after_create` - After successful vehicle creation
+- `vehicle:before_repair` - Before vehicle repair
+- `vehicle:after_repair` - After successful vehicle repair
+- `vehicle:before_delete` - Before vehicle deletion
+- `vehicle:after_delete` - After successful vehicle deletion
+- `vehicle:before_explode` - Before vehicle explosion
+- `vehicle:after_explode` - After vehicle explosion
+- `vehicle:before_set_player` - Before putting player in vehicle
+- `vehicle:after_set_player` - After player enters vehicle
 
 ---
 
@@ -2345,3 +2738,275 @@ AddEventHandler('housing:createHouse', function(coords, price)
     end
 end)
 ```
+
+---
+
+## 🪝 **NEW: Universal Inventory Hooks System**
+
+The **Universal Inventory Hooks System** provides a powerful event-driven system that allows you to intercept and modify inventory operations in real-time across multiple inventory systems. This enables advanced validation, logging, anti-cheat measures, and custom business logic.
+
+> **Credits:** The hooks system design is inspired by and based on the original ox_inventory hooks implementation by Overextended. We extend this excellent design to work across multiple inventory systems.
+
+### **Supported Inventory Systems**
+
+- **ox_inventory** - Full hooks support with all advanced features
+- **qb-inventory** - Complete hooks implementation with all core operations
+- **qs-inventory** - Basic hooks support (planned)
+
+The wrapper automatically detects which inventory system is installed and provides hooks functionality where supported.
+
+### **What are Hooks?**
+
+Hooks are event listeners that trigger before and after inventory operations, allowing you to:
+
+- **Validate operations** before they execute
+- **Cancel operations** by returning `false`
+- **Log activities** for auditing and anti-cheat
+- **Apply custom logic** like discounts, restrictions, or notifications
+- **Integrate with external systems** like databases or analytics
+
+### **Available Hooks**
+
+**Core Inventory Hooks (All Supported Systems):**
+
+- `addItem` / `afterAddItem` - When items are added to inventory
+- `removeItem` / `afterRemoveItem` - When items are removed from inventory
+- `giveItem` / `afterGiveItem` - When items are given between players (where supported)
+- `clearInventory` / `afterClearInventory` - When inventory is cleared
+
+**Advanced Hooks (ox_inventory):**
+
+- `swapSlots` / `afterSwapSlots` - When items are moved between slots
+- `buyItem` / `afterBuyItem` - When items are purchased
+- `createShop` / `afterCreateShop` - When shops are created
+- `deleteShop` / `afterDeleteShop` - When shops are deleted
+- `buyShopItem` / `afterBuyShopItem` - When items are purchased from shops
+- `sellToShop` / `afterSellToShop` - When items are sold to shops
+
+### **Hook Registration (Server-Side Only)**
+
+```lua
+-- Register a hook to validate item additions
+lib.inventory.registerHook('addItem', function(data)
+    print(('Player %s adding %s (x%s)'):format(data.source, data.item, data.count))
+
+    -- Prevent adding weapons during first 5 minutes
+    if data.item:match('weapon_') and GetGameTimer() < 300000 then
+        TriggerClientEvent('ox_lib:notify', data.source, {
+            type = 'error',
+            description = 'Weapons are disabled during the first 5 minutes'
+        })
+        return false -- Cancel the operation
+    end
+
+    return true -- Allow the operation
+end)
+
+-- Register a hook for after item addition
+lib.inventory.registerHook('afterAddItem', function(data, result)
+    print(('Successfully added %s to player %s'):format(data.item, data.source))
+
+    -- Log important transactions
+    if data.item == 'money' and data.count > 10000 then
+        print(('LARGE MONEY ADD: Player %s received $%s'):format(data.source, data.count))
+    end
+end)
+```
+
+### **Shop Hooks Example**
+
+```lua
+-- Apply VIP discounts on shop purchases
+lib.inventory.registerHook('buyShopItem', function(data)
+    local player = lib.core.getPlayerData(data.source)
+
+    -- Apply 10% discount for VIP players
+    if player and player.group == 'vip' then
+        data.price = math.floor(data.price * 0.9)
+        TriggerClientEvent('ox_lib:notify', data.source, {
+            type = 'success',
+            description = 'VIP discount applied!'
+        })
+    end
+
+    return true
+end)
+
+-- Award loyalty points after purchases
+lib.inventory.registerHook('afterBuyShopItem', function(data, result)
+    local points = math.floor(data.price / 100)
+    if points > 0 then
+        -- Add loyalty points (example)
+        TriggerServerEvent('loyalty:addPoints', data.source, points)
+    end
+end)
+```
+
+### **Anti-Cheat Integration**
+
+```lua
+-- Anti-duplication hook
+lib.inventory.registerHook('addItem', function(data)
+    local playerId = tostring(data.source)
+    local currentTime = GetGameTimer()
+
+    -- Track rapid item additions
+    if not GlobalState.lastItemAdd then
+        GlobalState.lastItemAdd = {}
+    end
+
+    local lastAdd = GlobalState.lastItemAdd[playerId] or 0
+    if currentTime - lastAdd < 100 then -- Less than 100ms
+        print(('ANTI-CHEAT: Rapid item addition detected for player %s'):format(data.source))
+        return false
+    end
+
+    GlobalState.lastItemAdd[playerId] = currentTime
+    return true
+end)
+
+-- Prevent dropping essential items
+lib.inventory.registerHook('removeItem', function(data)
+    if data.item == 'id_card' then
+        TriggerClientEvent('ox_lib:notify', data.source, {
+            type = 'error',
+            description = 'You cannot drop your ID card'
+        })
+        return false
+    end
+    return true
+end)
+```
+
+### **Hook Management Functions**
+
+```lua
+-- Register a new hook
+lib.inventory.registerHook(hookName, callback)
+
+-- Trigger a hook manually
+lib.inventory.triggerHook(hookName, ...)
+
+-- Remove a specific hook
+lib.inventory.removeHook(hookName, callback)
+
+-- Clear all hooks for an event
+lib.inventory.clearHooks(hookName)
+
+-- Clear all hooks
+lib.inventory.clearHooks()
+```
+
+### **Data Structures**
+
+Each hook receives a `data` table with relevant information:
+
+**addItem/removeItem data:**
+
+```lua
+{
+    source = 1,           -- Player server ID
+    item = "weapon_pistol", -- Item name
+    count = 1,            -- Item count
+    metadata = {}         -- Item metadata
+}
+```
+
+**buyShopItem data:**
+
+```lua
+{
+    source = 1,           -- Player server ID
+    shopName = "gunstore", -- Shop identifier
+    itemName = "ammo_9mm", -- Item being purchased
+    amount = 50,          -- Quantity
+    price = 100           -- Purchase price
+}
+```
+
+### **Compatibility Check**
+
+Before registering hooks, check if they're supported by your inventory system:
+
+```lua
+-- Check if hooks are available
+if lib.inventory.registerHook then
+    print('Inventory hooks system is available')
+
+    -- Safe hook registration
+    lib.inventory.registerHook('addItem', function(data)
+        -- Your hook logic here
+        return true
+    end)
+else
+    print('Current inventory system does not support hooks')
+end
+
+-- Helper function for safe registration
+function registerInventoryHook(hookName, callback)
+    if lib.inventory.registerHook then
+        return lib.inventory.registerHook(hookName, callback)
+    else
+        print(('Warning: Hook %s not supported'):format(hookName))
+        return false
+    end
+end
+```
+
+### **Cross-Inventory Examples**
+
+```lua
+-- Works with both ox_inventory and qb-inventory
+lib.inventory.registerHook('addItem', function(data)
+    -- Universal validation logic
+    if data.item:match('weapon_') then
+        local player = lib.core.getPlayerData(data.source)
+        if not player or player.job ~= 'police' then
+            TriggerClientEvent('ox_lib:notify', data.source, {
+                type = 'error',
+                description = 'Only police can carry weapons'
+            })
+            return false
+        end
+    end
+    return true
+end)
+
+-- Works across all supported inventories
+lib.inventory.registerHook('giveItem', function(data)
+    -- Prevent giving items to offline players
+    if not GetPlayerName(data.target) then
+        TriggerClientEvent('ox_lib:notify', data.source, {
+            type = 'error',
+            description = 'Target player is not online'
+        })
+        return false
+    end
+    return true
+end)
+```
+
+### **Best Practices**
+
+1. **Always validate input** - Check if data exists before using it
+2. **Use pcall for safety** - Wrap risky operations in protected calls
+3. **Return boolean values** - `false` cancels operation, `true` allows it
+4. **Log important events** - Use hooks for audit trails
+5. **Keep hooks lightweight** - Heavy operations can impact performance
+6. **Clean up on resource stop** - Remove hooks when your resource stops
+7. **Check compatibility** - Verify hooks are supported before registering
+8. **Use universal functions** - Stick to core hooks for cross-inventory compatibility
+
+### **Complete Example**
+
+See `examples/inventory_hooks_usage.lua` for comprehensive examples including:
+
+- Basic inventory validation
+- Shop purchase modifications
+- Anti-cheat integration
+- Economy logging
+- Dynamic hook management
+
+---
+
+## 🎯 **Advantages of ox_lib Extended**
