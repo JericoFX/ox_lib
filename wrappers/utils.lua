@@ -3,9 +3,14 @@ local GetResourceState = GetResourceState
 local AddEventHandler = AddEventHandler
 local globalPrint = print
 
-local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will load every existent resource and the once that start later, fuck... sorry for the spanish comments, it helps me a lot
+local function createWrapper(wrapperType, libKey)
     local config = require "wrappers.config"
     local mapping = config[wrapperType] or {}
+    
+    -- Check if already loaded by unified loader
+    if lib[libKey] and lib[libKey].system then
+        return lib[libKey]
+    end
 
     -- Evitar spam de consolas: solo se imprimen los logs la primera vez que
     -- se carga un tipo de wrapper en el cliente/servidor. Para ello usamos
@@ -40,6 +45,24 @@ local function createWrapper(wrapperType, libKey) -- FUCKING FINALLY this will l
     local function loadSystemFunctions(system)
         if not system then return nil end
 
+        -- Try to use unified loader first
+        local loaderPath = LoadResourceFile('ox_lib', 'resource/loader.lua')
+        if loaderPath then
+            local fn = load(loaderPath, '@@ox_lib/resource/loader.lua')
+            if fn then
+                local loader = fn()
+                if loader then
+                    local modulePath = ('%s/%s'):format(wrapperType, system)
+                    local result = loader.load(modulePath)
+                    if result then
+                        printLn('2', ('LOADER] Cargado via unified loader: ^5%s/%s'):format(wrapperType, system))
+                        return result
+                    end
+                end
+            end
+        end
+
+        -- Fallback to original loading method
         local context = lib.context
         local systemPath = ('wrappers/%s/%s/%s.lua'):format(wrapperType, system, context)
         local chunk = LoadResourceFile('ox_lib', systemPath)

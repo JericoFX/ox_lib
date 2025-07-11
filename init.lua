@@ -56,147 +56,27 @@ local STATES = {
 local logLevel = GetConvar('ox:loglevel', 'info'):lower()
 local debugMode = logLevel == 'debug' or logLevel == 'verbose'
 
+-- Load the unified loader
+local loaderPath = LoadResourceFile(ox_lib, 'resource/loader.lua')
+local loader = nil
+if loaderPath then
+    local fn = load(loaderPath, '@@ox_lib/resource/loader.lua')
+    if fn then
+        loader = fn()
+    end
+end
+
 local function loadModule(self, module)
-    -- Prevent circular loading
-    if moduleStates[module] == STATES.LOADING then
-        if lib.print then
-            lib.print.error('loadModule', 'Circular dependency detected for module: %s', module)
+    if loader then
+        local result = loader.load(module)
+        if result then
+            self[module] = result
+            return result
         end
-        return nil
     end
     
-    -- Check if already loaded
-    if moduleStates[module] == STATES.LOADED then
-        return rawget(self, module)
-    end
-    
-    moduleStates[module] = STATES.LOADING
-    
-    if debugMode and lib.print then
-        lib.print.debug('loadModule', 'Loading module: %s', module)
-    end
-    
-    local dir = ('imports/%s'):format(module)
-    local chunk = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(dir, context))
-    local shared = LoadResourceFile(ox_lib, ('%s/shared.lua'):format(dir))
-
-    if shared then
-        chunk = (chunk and ('%s\n%s'):format(shared, chunk)) or shared
-    end
-
-    if chunk then
-        local fn, err = load(chunk, ('@@ox_lib/imports/%s/%s.lua'):format(module, context))
-
-        if not fn or err then
-            if shared then
-                lib.print.warn(("An error occurred when importing '@ox_lib/imports/%s'.\nThis is likely caused by improperly updating ox_lib.\n%s'")
-                    :format(module, err))
-                fn, err = load(shared, ('@@ox_lib/imports/%s/shared.lua'):format(module))
-            end
-
-            if not fn or err then
-                return error(('\n^1Error importing module (%s): %s^0'):format(dir, err), 3)
-            end
-        end
-
-        local success, result = pcall(fn)
-        if not success then
-            moduleStates[module] = STATES.ERROR
-            if lib.print then
-                lib.print.error('loadModule', 'Error executing module %s: %s', module, result)
-            end
-            return error(('\n^1Error executing module (%s): %s^0'):format(module, result), 3)
-        end
-        
-        moduleStates[module] = STATES.LOADED
-        self[module] = result or noop
-        
-        if debugMode and lib.print then
-            lib.print.debug('loadModule', 'Module loaded successfully: %s', module)
-        end
-        
-        return self[module]
-    end
-
-    -- Si no se encontró en imports, intentar cargar desde api?
-    local apiDir = ('api/%s'):format(module)
-    local apiContext = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(apiDir, context))
-
-    if apiContext then
-        local fn, err = load(apiContext, ('@@ox_lib/api/%s/%s.lua'):format(module, context))
-
-        if not fn or err then
-            return error(('\n^1Error importing API module (%s/%s.lua): %s^0'):format(module, context, err), 3)
-        end
-
-        local success, result = pcall(fn)
-        if not success then
-            moduleStates[module] = STATES.ERROR
-            if lib.print then
-                lib.print.error('loadModule', 'Error executing API module %s: %s', module, result)
-            end
-            return error(('\n^1Error executing API module (%s): %s^0'):format(module, result), 3)
-        end
-        
-        moduleStates[module] = STATES.LOADED
-        self[module] = result or noop
-        
-        if debugMode and lib.print then
-            lib.print.debug('loadModule', 'API module loaded successfully: %s', module)
-        end
-        
-        return self[module]
-    end
-
-    -- Si no se encontró en api/, intentar cargar desde wrappers/
-    local wrapperPath = ('wrappers/%s/%s.lua'):format(module, context)
-    chunk = LoadResourceFile(ox_lib, wrapperPath)
-    local sharedWrapper = LoadResourceFile(ox_lib, ('wrappers/%s/shared.lua'):format(module))
-
-    if sharedWrapper then
-        chunk = (chunk and ('%s\n%s'):format(sharedWrapper, chunk)) or sharedWrapper
-    end
-
-    if chunk then
-        if debugMode and lib.print then
-            lib.print.debug('loadModule', 'Loading wrapper: %s', module)
-            lib.print.debug('loadModule', 'Path: %s', wrapperPath)
-            if sharedWrapper then
-                lib.print.debug('loadModule', 'Shared wrapper found')
-            end
-        end
-
-        local fn, err = load(chunk, ('@@ox_lib/wrappers/%s/%s.lua'):format(module, context))
-
-        if not fn or err then
-            moduleStates[module] = STATES.ERROR
-            if lib.print then
-                lib.print.error('loadModule', 'Failed to load wrapper %s: %s', module, err)
-            end
-            return error(('\n^1Error importing wrapper class (wrappers/%s): %s^0'):format(module, err), 3)
-        end
-
-        local success, result = pcall(fn)
-        if not success then
-            moduleStates[module] = STATES.ERROR
-            if lib.print then
-                lib.print.error('loadModule', 'Error executing wrapper %s: %s', module, result)
-            end
-            return error(('\n^1Error executing wrapper (%s): %s^0'):format(module, result), 3)
-        end
-        
-        moduleStates[module] = STATES.LOADED
-        self[module] = result or noop
-        
-        if debugMode and lib.print then
-            lib.print.debug('loadModule', 'Wrapper loaded successfully: %s', module)
-            if module == 'core' and result and result.framework then
-                lib.print.info('loadModule', 'Framework detected: %s', result.framework)
-            end
-        end
-        
-        return self[module]
-    end
+    -- Fallback to export if loader fails
+    return nil
 end
 
 -----------------------------------------------------------------------------------------------

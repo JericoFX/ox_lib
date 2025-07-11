@@ -20,11 +20,14 @@
 
 This version includes an improved module loading system with:
 
+- **Unified Loader**: Single loader system that eliminates code duplication between imports, wrappers, and API modules
+- **Intelligent Context Detection**: Automatically detects which resource is calling and loads appropriate modules
 - **State Management**: Modules now have defined states (UNLOADED, LOADING, LOADED, ERROR) to prevent circular dependencies
 - **Improved Error Handling**: All module executions use pcall for safer error handling
 - **Enhanced Logging**: New logging system with configurable levels (DEBUG, INFO, WARN, ERROR, FATAL)
 - **Optimized Cache**: Better memory management with timeout handling and event deduplication
 - **Performance Improvements**: Batch processing of cache callbacks and lazy loading optimizations
+- **Per-Resource Module Caching**: Modules are cached per-resource to avoid conflicts
 
 ### Configuration
 
