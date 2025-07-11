@@ -43,7 +43,39 @@ local context = IsDuplicityVersion() and 'server' or 'client'
 
 function noop() end
 
+-- Module loading states
+local moduleStates = {}
+local STATES = {
+    UNLOADED = 'UNLOADED',
+    LOADING = 'LOADING', 
+    LOADED = 'LOADED',
+    ERROR = 'ERROR'
+}
+
+-- Get logging level from convar
+local logLevel = GetConvar('ox:loglevel', 'info'):lower()
+local debugMode = logLevel == 'debug' or logLevel == 'verbose'
+
 local function loadModule(self, module)
+    -- Prevent circular loading
+    if moduleStates[module] == STATES.LOADING then
+        if lib.print then
+            lib.print.error('loadModule', 'Circular dependency detected for module: %s', module)
+        end
+        return nil
+    end
+    
+    -- Check if already loaded
+    if moduleStates[module] == STATES.LOADED then
+        return rawget(self, module)
+    end
+    
+    moduleStates[module] = STATES.LOADING
+    
+    if debugMode and lib.print then
+        lib.print.debug('loadModule', 'Loading module: %s', module)
+    end
+    
     local dir = ('imports/%s'):format(module)
     local chunk = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(dir, context))
     local shared = LoadResourceFile(ox_lib, ('%s/shared.lua'):format(dir))
@@ -67,8 +99,22 @@ local function loadModule(self, module)
             end
         end
 
-        local result = fn()
+        local success, result = pcall(fn)
+        if not success then
+            moduleStates[module] = STATES.ERROR
+            if lib.print then
+                lib.print.error('loadModule', 'Error executing module %s: %s', module, result)
+            end
+            return error(('\n^1Error executing module (%s): %s^0'):format(module, result), 3)
+        end
+        
+        moduleStates[module] = STATES.LOADED
         self[module] = result or noop
+        
+        if debugMode and lib.print then
+            lib.print.debug('loadModule', 'Module loaded successfully: %s', module)
+        end
+        
         return self[module]
     end
 
@@ -83,8 +129,22 @@ local function loadModule(self, module)
             return error(('\n^1Error importing API module (%s/%s.lua): %s^0'):format(module, context, err), 3)
         end
 
-        local result = fn()
+        local success, result = pcall(fn)
+        if not success then
+            moduleStates[module] = STATES.ERROR
+            if lib.print then
+                lib.print.error('loadModule', 'Error executing API module %s: %s', module, result)
+            end
+            return error(('\n^1Error executing API module (%s): %s^0'):format(module, result), 3)
+        end
+        
+        moduleStates[module] = STATES.LOADED
         self[module] = result or noop
+        
+        if debugMode and lib.print then
+            lib.print.debug('loadModule', 'API module loaded successfully: %s', module)
+        end
+        
         return self[module]
     end
 
@@ -98,41 +158,43 @@ local function loadModule(self, module)
     end
 
     if chunk then
-        print('^0========================================')
-        print('^2[OX_LIB WRAPPER LOADER]^0')
-        print('^3Resource: ^5' .. cache.resource)
-        print('^3Módulo: ^5' .. module)
-        print('^3Contexto: ^5' .. context)
-        print('^3Archivo: ^5' .. wrapperPath)
-        if sharedWrapper then
-            print('^3Shared: ^2✓ Cargado')
-        else
-            print('^3Shared: ^1✗ No encontrado')
+        if debugMode and lib.print then
+            lib.print.debug('loadModule', 'Loading wrapper: %s', module)
+            lib.print.debug('loadModule', 'Path: %s', wrapperPath)
+            if sharedWrapper then
+                lib.print.debug('loadModule', 'Shared wrapper found')
+            end
         end
-        print('^0========================================^0')
 
         local fn, err = load(chunk, ('@@ox_lib/wrappers/%s/%s.lua'):format(module, context))
 
         if not fn or err then
-            print('^1========================================')
-            print('^1[ERROR AL CARGAR WRAPPER]')
-            print('^1Módulo: ' .. module)
-            print('^1Error: ' .. tostring(err))
-            print('^1========================================^0')
+            moduleStates[module] = STATES.ERROR
+            if lib.print then
+                lib.print.error('loadModule', 'Failed to load wrapper %s: %s', module, err)
+            end
             return error(('\n^1Error importing wrapper class (wrappers/%s): %s^0'):format(module, err), 3)
         end
 
-        local result = fn()
-
-        print('^2========================================')
-        print('^2[WRAPPER CARGADO EXITOSAMENTE]')
-        print('^2Módulo: ^5' .. module)
-        if module == 'core' and result and result.framework then
-            print('^2Framework detectado: ^5' .. result.framework)
+        local success, result = pcall(fn)
+        if not success then
+            moduleStates[module] = STATES.ERROR
+            if lib.print then
+                lib.print.error('loadModule', 'Error executing wrapper %s: %s', module, result)
+            end
+            return error(('\n^1Error executing wrapper (%s): %s^0'):format(module, result), 3)
         end
-        print('^2========================================^0')
-
+        
+        moduleStates[module] = STATES.LOADED
         self[module] = result or noop
+        
+        if debugMode and lib.print then
+            lib.print.debug('loadModule', 'Wrapper loaded successfully: %s', module)
+            if module == 'core' and result and result.framework then
+                lib.print.info('loadModule', 'Framework detected: %s', result.framework)
+            end
+        end
+        
         return self[module]
     end
 end
@@ -249,38 +311,82 @@ end
 function cache(key, func, timeout) end
 
 local cacheEvents = {}
+local cacheTimeouts = {}
+local cacheHandlers = {}
 
-local cache = setmetatable({ game = GetGameName(), resource = resourceName }, {
+local cache = setmetatable({ 
+    game = GetGameName(), 
+    resource = resourceName,
+    _version = 1 -- Cache version control
+}, {
     __index = function(self, key)
-        cacheEvents[key] = {}
-
-        AddEventHandler(('ox_lib:cache:%s'):format(key), function(value)
-            local oldValue = self[key]
-            local events = cacheEvents[key]
-
-            for i = 1, #events do
-                Citizen.CreateThreadNow(function()
-                    events[i](value, oldValue)
-                end)
-            end
-
-            self[key] = value
-        end)
-
+        -- Skip internal properties
+        if key:sub(1, 1) == '_' then return nil end
+        
+        -- Initialize events array if needed
+        cacheEvents[key] = cacheEvents[key] or {}
+        
+        -- Register event handler only once
+        if not cacheHandlers[key] then
+            cacheHandlers[key] = true
+            
+            AddEventHandler(('ox_lib:cache:%s'):format(key), function(value)
+                local oldValue = self[key]
+                
+                -- Skip if no change
+                if oldValue == value then return end
+                
+                local events = cacheEvents[key]
+                if #events > 0 then
+                    -- Batch process callbacks for better performance
+                    Citizen.CreateThreadNow(function()
+                        for i = 1, #events do
+                            local success, err = pcall(events[i], value, oldValue)
+                            if not success and lib.print then
+                                lib.print.error('cache', 'Error in cache callback for %s: %s', key, err)
+                            end
+                        end
+                    end)
+                end
+                
+                self[key] = value
+            end)
+        end
+        
+        -- Initialize with exported value
         return rawset(self, key, export.cache(nil, key) or false)[key]
     end,
-
+    
     __call = function(self, key, func, timeout)
-        local value = rawget(self, key)
-
-        if value == nil then
-            value = func()
-
-            rawset(self, key, value)
-
-            if timeout then SetTimeout(timeout, function() self[key] = nil end) end
+        -- Clear existing timeout if any
+        if cacheTimeouts[key] then
+            ClearTimeout(cacheTimeouts[key])
+            cacheTimeouts[key] = nil
         end
-
+        
+        local value = rawget(self, key)
+        if value == nil then
+            -- Execute function with error handling
+            local success, result = pcall(func)
+            if not success then
+                if lib.print then
+                    lib.print.error('cache', 'Error generating cache value for %s: %s', key, result)
+                end
+                return nil
+            end
+            
+            value = result
+            rawset(self, key, value)
+            
+            -- Set new timeout if specified
+            if timeout then
+                cacheTimeouts[key] = SetTimeout(timeout, function()
+                    self[key] = nil
+                    cacheTimeouts[key] = nil
+                end)
+            end
+        end
+        
         return value
     end,
 })

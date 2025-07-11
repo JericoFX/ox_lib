@@ -16,6 +16,23 @@
 
 ---
 
+## Enhanced Module System
+
+This version includes an improved module loading system with:
+
+- **State Management**: Modules now have defined states (UNLOADED, LOADING, LOADED, ERROR) to prevent circular dependencies
+- **Improved Error Handling**: All module executions use pcall for safer error handling
+- **Enhanced Logging**: New logging system with configurable levels (DEBUG, INFO, WARN, ERROR, FATAL)
+- **Optimized Cache**: Better memory management with timeout handling and event deduplication
+- **Performance Improvements**: Batch processing of cache callbacks and lazy loading optimizations
+
+### Configuration
+
+Set the logging level with the convar:
+```
+set ox:loglevel "info"  # Options: debug, info, warn, error, fatal
+```
+
 ## What is this?
 
 This is an **experimental extension** of the original ox_lib that adds:
