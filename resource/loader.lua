@@ -67,9 +67,9 @@ local function loadModuleInternal(module, callerResource)
         
         if content then
             local env = setmetatable({
-                lib = lib,
-                cache = cache,
-                require = require,
+                lib = _ENV.lib,
+                cache = _ENV.cache,
+                require = _ENV.require,
                 _ENV = _ENV
             }, { __index = _G })
             

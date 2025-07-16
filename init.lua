@@ -56,15 +56,8 @@ local STATES = {
 local logLevel = GetConvar('ox:loglevel', 'info'):lower()
 local debugMode = logLevel == 'debug' or logLevel == 'verbose'
 
--- Load the unified loader
-local loaderPath = LoadResourceFile(ox_lib, 'resource/loader.lua')
+-- Forward declaration for loader
 local loader = nil
-if loaderPath then
-    local fn = load(loaderPath, '@@ox_lib/resource/loader.lua')
-    if fn then
-        loader = fn()
-    end
-end
 
 local function loadModule(self, module)
     if loader then
@@ -77,6 +70,42 @@ local function loadModule(self, module)
     
     -- Fallback to export if loader fails
     return nil
+end
+
+-- Implement lib.require function
+local function libRequire(module)
+    if type(module) ~= 'string' then
+        error('Module name must be a string', 2)
+    end
+    
+    -- Try to load via the unified loader first
+    if loader then
+        local result = loader.load(module)
+        if result then
+            return result
+        end
+    end
+    
+    -- Fallback to standard module loading
+    local dir = ('imports/%s'):format(module)
+    local chunk = LoadResourceFile(ox_lib, ('%s/%s.lua'):format(dir, context))
+    local shared = LoadResourceFile(ox_lib, ('%s/shared.lua'):format(dir))
+    
+    if shared then
+        chunk = (chunk and ('%s\n%s'):format(shared, chunk)) or shared
+    end
+    
+    if chunk then
+        local fn, err = load(chunk, ('@@ox_lib/imports/%s/%s.lua'):format(module, context))
+        
+        if not fn or err then
+            error(('Error loading module %s: %s'):format(module, err), 2)
+        end
+        
+        return fn()
+    end
+    
+    error(('Module %s not found'):format(module), 2)
 end
 
 -----------------------------------------------------------------------------------------------
@@ -109,6 +138,7 @@ end
 local lib = setmetatable({
     name = ox_lib,
     context = context,
+    require = libRequire,
 }, {
     __index = call,
     __call = call,
@@ -282,6 +312,16 @@ end
 _ENV.lib = lib
 _ENV.cache = cache
 _ENV.require = lib.require
+
+-- Initialize the unified loader after globals are set
+local loaderPath = LoadResourceFile(ox_lib, 'resource/loader.lua')
+if loaderPath then
+    local fn = load(loaderPath, '@@ox_lib/resource/loader.lua')
+    if fn then
+        loader = fn()
+    end
+end
+
 local notifyEvent = ('__ox_notify_%s'):format(cache.resource)
 
 if context == 'client' then
