@@ -9,7 +9,7 @@ end
 local Core = lib.class('Core')
 local ESX = exports['es_extended']:getSharedObject()
 
-local normalize = require 'wrappers.core.normalizer'
+local normalize = require 'wrappers.normalizer'
 
 local esxMap = {
     id       = 'identifier',

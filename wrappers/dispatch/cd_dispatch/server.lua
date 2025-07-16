@@ -6,7 +6,7 @@ if GetResourceState('cd_dispatch') ~= 'started' then
     return
 end
 
-local Normalizer = require 'wrappers.core.normalizer'
+local Normalizer = require 'wrappers.normalizer'
 
 -- Convert to localised functions ------------------------------------------
 

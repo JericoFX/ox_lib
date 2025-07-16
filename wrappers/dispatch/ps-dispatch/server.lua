@@ -90,7 +90,7 @@ local dispatch = {
 
 
 -- Normalizer registration ---------------------------------------------------
-local Normalizer                      = require 'wrappers.core.normalizer'
+local Normalizer                      = require 'wrappers.normalizer'
 
 Normalizer.dispatch.sendAlert         = sendAlert
 Normalizer.dispatch.sendPoliceAlert   = sendPoliceAlert

@@ -1,5 +1,5 @@
 local Target = lib.class('Target')
-local Normalizer = require 'wrappers.core.normalizer'
+local normalizer = require 'wrappers.normalizer'
 
 function Target:constructor()
     self.system = 'ox_target'

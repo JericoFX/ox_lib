@@ -10,7 +10,7 @@ end
 local Core = lib.class('Core')
 local QBCore = exports['qb-core']:GetCoreObject()
 
-local normalize = require 'wrappers.core.normalizer'
+local normalize = require 'wrappers.normalizer'
 
 local qbMap = {
     id       = 'citizenid',

@@ -12,7 +12,7 @@ if GetResourceState('my_inventory') ~= 'started' then
     return
 end
 
-local Normalizer = require 'wrappers.core.normalizer'
+local Normalizer = require 'wrappers.normalizer'
 
 -- Ejemplos de helpers mínimos ------------------------------------------------
 local function getItem(source, item, metadata, strict)

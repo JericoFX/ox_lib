@@ -1,4 +1,4 @@
-local Normalizer = require 'wrappers.core.normalizer'
+local normalizer = require 'wrappers.normalizer'
 
 local Fuel = lib.class('Fuel')
 function Fuel:constructor()

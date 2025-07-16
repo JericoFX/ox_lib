@@ -46,7 +46,7 @@ local dispatch                        = {
     sendCustomAlert   = sendCustomAlert,
 }
 
-local Normalizer                      = require 'wrappers.core.normalizer'
+local Normalizer                      = require 'wrappers.normalizer'
 
 Normalizer.dispatch.sendAlert         = sendAlert
 Normalizer.dispatch.sendPoliceAlert   = sendPoliceAlert
