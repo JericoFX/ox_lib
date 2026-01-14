@@ -27,6 +27,8 @@ local glm = require 'glm'
 local Zones = {}
 _ENV.Zones = Zones
 
+local serverPlayerZones = lib.context == 'server' and {} or nil
+
 local function nextFreePoint(points, b, len)
     for i = 1, len do
         local n = (i + b) % len
@@ -105,10 +107,10 @@ local function getTriangles(polygon)
     return triangles
 end
 
-local insideZones = lib.context == 'client' and {} --[[@as table<number, CZone>]]
-local exitingZones = lib.context == 'client' and lib.array:new() --[[@as Array<CZone>]]
-local enteringZones = lib.context == 'client' and lib.array:new() --[[@as Array<CZone>]]
-local nearbyZones = lib.array:new() --[[@as Array<CZone>]]
+local insideZones = lib.context == 'client' and {}
+local exitingZones = lib.context == 'client' and lib.array:new()
+local enteringZones = lib.context == 'client' and lib.array:new()
+local nearbyZones = lib.array:new()
 local glm_polygon_contains = glm.polygon.contains
 local tick
 
@@ -118,7 +120,12 @@ local function removeZone(zone)
 
     lib.grid.removeEntry(zone)
 
-    if lib.context == 'server' then return end
+    if lib.context == 'server' then
+        for src, zones in pairs(serverPlayerZones) do
+            if zones[zone.id] then zones[zone.id] = nil end
+        end
+        return
+    end
 
     insideZones[zone.id] = nil
 
@@ -133,23 +140,99 @@ local function removeZone(zone)
     end
 end
 
+if lib.context == 'server' then
+    AddEventHandler('playerDropped', function() serverPlayerZones[source] = nil end)
+end
+
 CreateThread(function()
-    if lib.context == 'server' then return end
+    if lib.context == 'server' then
+        while true do
+            local players = GetPlayers()
+            for i = 1, #players do
+                local src = tonumber(players[i])
+                local ped = GetPlayerPed(src)
+                if ped == 0 then goto continue end
 
-    while true do
-        local coords = GetEntityCoords(cache.ped)
-        local zones = lib.grid.getNearbyEntries(coords, function(entry) return entry.remove == removeZone end) --[[@as Array<CZone>]]
-        local cellX, cellY = lib.grid.getCellPosition(coords)
-        cache.coords = coords
+                local coords = GetEntityCoords(ped)
+                local zones = lib.grid.getNearbyEntries(coords, function(entry) return entry.remove == removeZone end)
+                local currentZones = {}
+                local lastZones = serverPlayerZones[src] or {}
 
-        if cellX ~= cache.lastCellX or cellY ~= cache.lastCellY then
-            for i = 1, #nearbyZones do
-                local zone = nearbyZones[i]
+                for j = 1, #zones do
+                    local zone = zones[j]
+                    if zone:contains(coords, true) then
+                        currentZones[zone.id] = zone
+                    end
+                end
 
-                if zone.insideZone then
-                    local contains = zone:contains(coords, true)
+                for id, zone in pairs(lastZones) do
+                    if not currentZones[id] then
+                        if zone.onExit then zone:onExit(src) end
+                    end
+                end
 
-                    if not contains then
+                for id, zone in pairs(currentZones) do
+                    if not lastZones[id] then
+                        if zone.onEnter then zone:onEnter(src) end
+                    else
+                        if zone.inside then zone:inside(src) end
+                    end
+                end
+
+                serverPlayerZones[src] = currentZones
+                ::continue::
+            end
+            Wait(300)
+        end
+    else
+        while true do
+            local coords = GetEntityCoords(cache.ped)
+            local zones = lib.grid.getNearbyEntries(coords, function(entry) return entry.remove == removeZone end)
+            local cellX, cellY = lib.grid.getCellPosition(coords)
+            cache.coords = coords
+
+            if cellX ~= cache.lastCellX or cellY ~= cache.lastCellY then
+                for i = 1, #nearbyZones do
+                    local zone = nearbyZones[i]
+
+                    if zone.insideZone then
+                        local contains = zone:contains(coords, true)
+
+                        if not contains then
+                            zone.insideZone = false
+                            insideZones[zone.id] = nil
+
+                            if zone.onExit then
+                                exitingZones:push(zone)
+                            end
+                        end
+                    end
+                end
+
+                cache.lastCellX = cellX
+                cache.lastCellY = cellY
+            end
+
+            nearbyZones = zones
+
+            for i = 1, #zones do
+                local zone = zones[i]
+                local contains = zone:contains(coords, true)
+
+                if contains then
+                    if not zone.insideZone then
+                        zone.insideZone = true
+
+                        if zone.onEnter then
+                            enteringZones:push(zone)
+                        end
+
+                        if zone.inside or zone.debug then
+                            insideZones[zone.id] = zone
+                        end
+                    end
+                else
+                    if zone.insideZone then
                         zone.insideZone = false
                         insideZones[zone.id] = nil
 
@@ -157,95 +240,62 @@ CreateThread(function()
                             exitingZones:push(zone)
                         end
                     end
-                end
-            end
 
-            cache.lastCellX = cellX
-            cache.lastCellY = cellY
-        end
-
-        nearbyZones = zones
-
-        for i = 1, #zones do
-            local zone = zones[i]
-            local contains = zone:contains(coords, true)
-
-            if contains then
-                if not zone.insideZone then
-                    zone.insideZone = true
-
-                    if zone.onEnter then
-                        enteringZones:push(zone)
-                    end
-
-                    if zone.inside or zone.debug then
+                    if zone.debug then
                         insideZones[zone.id] = zone
                     end
                 end
-            else
-                if zone.insideZone then
-                    zone.insideZone = false
-                    insideZones[zone.id] = nil
+            end
 
-                    if zone.onExit then
-                        exitingZones:push(zone)
-                    end
+            local exitingSize = #exitingZones
+            local enteringSize = #enteringZones
+
+            if exitingSize > 0 then
+                table.sort(exitingZones, function(a, b)
+                    return a.distance < b.distance
+                end)
+
+                for i = exitingSize, 1, -1 do
+                    exitingZones[i]:onExit()
                 end
 
-                if zone.debug then
-                    insideZones[zone.id] = zone
+                table.wipe(exitingZones)
+            end
+
+            if enteringSize > 0 then
+                table.sort(enteringZones, function(a, b)
+                    return a.distance < b.distance
+                end)
+
+                for i = 1, enteringSize do
+                    enteringZones[i]:onEnter()
                 end
-            end
-        end
 
-        local exitingSize = #exitingZones
-        local enteringSize = #enteringZones
-
-        if exitingSize > 0 then
-            table.sort(exitingZones, function(a, b)
-                return a.distance < b.distance
-            end)
-
-            for i = exitingSize, 1, -1 do
-                exitingZones[i]:onExit()
+                table.wipe(enteringZones)
             end
 
-            table.wipe(exitingZones)
-        end
+            if not tick then
+                if next(insideZones) then
+                    tick = SetInterval(function()
+                        for _, zone in pairs(insideZones) do
+                            if zone.debug then
+                                zone:debug()
 
-        if enteringSize > 0 then
-            table.sort(enteringZones, function(a, b)
-                return a.distance < b.distance
-            end)
-
-            for i = 1, enteringSize do
-                enteringZones[i]:onEnter()
-            end
-
-            table.wipe(enteringZones)
-        end
-
-        if not tick then
-            if next(insideZones) then
-                tick = SetInterval(function()
-                    for _, zone in pairs(insideZones) do
-                        if zone.debug then
-                            zone:debug()
-
-                            if zone.inside and zone.insideZone then
+                                if zone.inside and zone.insideZone then
+                                    zone:inside()
+                                end
+                            else
                                 zone:inside()
                             end
-                        else
-                            zone:inside()
                         end
-                    end
-                end)
+                    end)
+                end
+            elseif not next(insideZones) then
+                tick = ClearInterval(tick)
             end
-        elseif not next(insideZones) then
-            tick = ClearInterval(tick)
-        end
 
-        Wait(300)
+            Wait(300)
+        end
     end
 end)
 
@@ -278,7 +328,6 @@ end
 
 local function debugSphere(self)
     DrawMarker(28, self.coords.x, self.coords.y, self.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.radius, self.radius, self.radius, self.debugColour.r,
-        ---@diagnostic disable-next-line: param-type-mismatch
         self.debugColour.g, self.debugColour.b, self.debugColour.a, false, false, 0, false, false, false, false)
 end
 
@@ -430,7 +479,6 @@ function lib.zones.poly(data)
         end
 
         for i = 1, pointN do
-            ---@diagnostic disable-next-line: param-type-mismatch
             points[i] = vec3(data.points[i].xy, zCoord)
         end
 
