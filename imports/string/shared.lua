@@ -63,4 +63,70 @@ function string.random(pattern, length)
     return table.concat(arr)
 end
 
+---Splits a string by a separator.
+---@param str string
+---@param separator string
+---@return string[]
+function string.split(str, separator)
+    local result = {}
+    local pattern = string.format("([^%s]+)", separator)
+    for match in string.gmatch(str, pattern) do
+        result[#result + 1] = match
+    end
+    return result
+end
+
+---Checks if a string starts with a prefix.
+---@param str string
+---@param prefix string
+---@return boolean
+function string.startsWith(str, prefix)
+    return string.sub(str, 1, #prefix) == prefix
+end
+
+---Checks if a string ends with a suffix.
+---@param str string
+---@param suffix string
+---@return boolean
+function string.endsWith(str, suffix)
+    return string.sub(str, -#suffix) == suffix
+end
+
+---Capitalizes the first letter of a string.
+---@param str string
+---@return string
+function string.capitalize(str)
+    return string.sub(str, 1, 1):upper() .. string.sub(str, 2)
+end
+
+---Truncates a string to a maximum length with ellipsis.
+---@param str string
+---@param length number
+---@param ellipsis? string
+---@return string
+function string.truncate(str, length, ellipsis)
+    ellipsis = ellipsis or '...'
+    if #str <= length then return str end
+    return string.sub(str, 1, length - #ellipsis) .. ellipsis
+end
+
+---Removes leading and trailing whitespace from a string.
+---@param str string
+---@return string
+function string.trim(str)
+    return string.match(str, '^%s*(.-)%s*$')
+end
+
+---Formats a number as currency with optional symbol and decimals.
+---@param amount number
+---@param symbol? string
+---@param decimals? number
+---@return string
+function string.formatCurrency(amount, symbol, decimals)
+    symbol = symbol or '$'
+    decimals = decimals or 2
+    local formatted = math.groupdigits(math.round(amount, decimals), ',')
+    return string.format('%s%s', symbol, formatted)
+end
+
 return lib.string

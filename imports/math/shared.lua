@@ -226,4 +226,93 @@ function math.round(value, places)
     return math.floor(value + 0.5)
 end
 
+---Calculates the sum of all values in an array.
+---@param tbl number[]
+---@return number
+function math.sum(tbl)
+    local result = 0
+    for i = 1, #tbl do
+        result += tbl[i]
+    end
+    return result
+end
+
+---Calculates the average of all values in an array.
+---@param tbl number[]
+---@return number
+function math.avg(tbl)
+    if #tbl == 0 then return 0 end
+    return math.sum(tbl) / #tbl
+end
+
+---Calculates the median of all values in an array.
+---@param tbl number[]
+---@return number
+function math.median(tbl)
+    if #tbl == 0 then return 0 end
+
+    local sorted = table.clone(tbl)
+    table.sort(sorted)
+    local len = #sorted
+
+    if len % 2 == 0 then
+        return (sorted[len // 2] + sorted[len // 2 + 1]) / 2
+    else
+        return sorted[(len // 2) + 1]
+    end
+end
+
+---Finds the maximum value in an array.
+---@param tbl number[]
+---@return number
+function math.maxArray(tbl)
+    local max = tbl[1]
+    for i = 2, #tbl do
+        if tbl[i] > max then max = tbl[i] end
+    end
+    return max
+end
+
+---Finds the minimum value in an array.
+---@param tbl number[]
+---@return number
+function math.minArray(tbl)
+    local min = tbl[1]
+    for i = 2, #tbl do
+        if tbl[i] < min then min = tbl[i] end
+    end
+    return min
+end
+
+---Generates an array of numbers within a range.
+---@param start number
+---@param stop number
+---@param step? number
+---@return number[]
+function math.range(start, stop, step)
+    step = step or 1
+    local result = {}
+
+    if step > 0 then
+        for i = start, stop, step do
+            result[#result + 1] = i
+        end
+    elseif step < 0 then
+        for i = start, stop, step do
+            result[#result + 1] = i
+        end
+    end
+
+    return result
+end
+
+---Calculates the percentage of value relative to total.
+---@param value number
+---@param total number
+---@return number
+function math.percent(value, total)
+    if total == 0 then return 0 end
+    return (value / total) * 100
+end
+
 return lib.math

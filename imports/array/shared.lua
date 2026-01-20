@@ -360,4 +360,65 @@ function lib.array.isArray(tbl)
     return false
 end
 
+---Tests if at least one element passes the provided test function.
+---@param testFn fun(element: unknown): boolean
+---@return boolean
+function lib.array:some(testFn)
+    for i = 1, #self do
+        if testFn(self[i]) then
+            return true
+        end
+    end
+    return false
+end
+
+---Sorts the array in place using a custom comparator function.
+---@param comparator fun(a: unknown, b: unknown): boolean
+---@return Array
+function lib.array:sort(comparator)
+    table.sort(self, comparator)
+    return self
+end
+
+---Creates a new array with only unique elements.
+---@return Array
+function lib.array:unique()
+    local seen = {}
+    local result = {}
+
+    for i = 1, #self do
+        local element = self[i]
+        if not seen[element] then
+            seen[element] = true
+            result[#result + 1] = element
+        end
+    end
+
+    return lib.array:new(table_unpack(result))
+end
+
+---Maps each element using a function, then flattens the result by one level.
+---@param cb fun(element: unknown, index: number): unknown[]
+---@return Array
+function lib.array:flatMap(cb)
+    local result = {}
+
+    for i = 1, #self do
+        local mapped = cb(self[i], i)
+        for _, v in pairs(mapped) do
+            result[#result + 1] = v
+        end
+    end
+
+    return lib.array:new(table_unpack(result))
+end
+
+---Returns a random element from the array.
+---@return unknown
+function lib.array:sample()
+    if #self == 0 then return nil end
+    local index = math.random(1, #self)
+    return self[index]
+end
+
 return lib.array

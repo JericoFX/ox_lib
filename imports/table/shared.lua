@@ -139,6 +139,100 @@ table.merge = table_merge
 table.shuffle = shuffle
 table.map = map
 
+---Finds the index of a value in an array.
+---@param tbl table
+---@param value any
+---@return number?
+function table.find(tbl, value)
+    for i = 1, #tbl do
+        if tbl[i] == value then
+            return i
+        end
+    end
+    return nil
+end
+
+---Returns an array of all keys in a table.
+---@param tbl table
+---@return any[]
+function table.keys(tbl)
+    local result = {}
+    local i = 0
+    for k in pairs(tbl) do
+        i += 1
+        result[i] = k
+    end
+    return result
+end
+
+---Returns an array of all values in a table.
+---@param tbl table
+---@return any[]
+function table.values(tbl)
+    local result = {}
+    local i = 0
+    for _, v in pairs(tbl) do
+        i += 1
+        result[i] = v
+    end
+    return result
+end
+
+---Counts elements in a table that match a predicate.
+---@param tbl table
+---@param predicate fun(value: any, key: any): boolean
+---@return number
+function table.count(tbl, predicate)
+    local count = 0
+    for k, v in pairs(tbl) do
+        if predicate(v, k) then
+            count += 1
+        end
+    end
+    return count
+end
+
+---Flattens a nested table recursively.
+---@param tbl table
+---@param depth? number
+---@return table
+function table.flat(tbl, depth)
+    depth = depth or 1
+
+    local function flatten(t, currentDepth)
+        local result = {}
+        for _, v in pairs(t) do
+            if type(v) == 'table' and currentDepth < depth then
+                local flattened = flatten(v, currentDepth + 1)
+                for _, nested in pairs(flattened) do
+                    result[#result + 1] = nested
+                end
+            elseif type(v) ~= 'table' or currentDepth >= depth then
+                result[#result + 1] = v
+            end
+        end
+        return result
+    end
+
+    return flatten(tbl, 1)
+end
+
+---Splits an array into chunks of a given size.
+---@param tbl table
+---@param size number
+---@return table[]
+function table.chunk(tbl, size)
+    local result = {}
+    for i = 1, #tbl, size do
+        local chunk = {}
+        for j = i, math.min(i + size - 1, #tbl) do
+            chunk[#chunk + 1] = tbl[j]
+        end
+        result[#result + 1] = chunk
+    end
+    return result
+end
+
 local frozenNewIndex = function(self) error(('cannot set values on a frozen table (%s)'):format(self), 2) end
 local _rawset = rawset
 
